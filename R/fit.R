@@ -1,39 +1,22 @@
-fit_rvfl <- function(x, y, nb_hidden = 5, nodes_sim = c("sobol", "halton", "unif"),
-                     activ = c("relu", "sigmoid", "tanh",
-                               "leakyrelu", "elu", "linear"),
-                     a = 0.01, lambda = 10^seq(from = -5, to = 2, length.out = 100),
+fit_rvfl <- function(x, y, nb_hidden = 5,
+                     lambda = 10^seq(from = -5, to = 2, length.out = 100),
                      seed = 1)
 {
-  nodes_sim <- match.arg(nodes_sim)
-  activ <- match.arg(activ)
-
-  if (nb_hidden > 0)
-  {
-    list_xreg <- create_new_predictors(x = x, nb_hidden = nb_hidden,
-                                       method = nodes_sim, activ = activ,
-                                       a = a, seed = seed)
-    X <- list_xreg$predictors
-  } else {
-    X <- x
-  }
+  stopifnot(nb_hidden > 0)
+  x <- as.matrix(x)
+  y <- as.vector(y)
 
   ym <- mean(y)
   centered_y <- y - ym
 
-  x_scaled <- my_scale(X)
+  list_xreg <- create_new_predictors(x = x, nb_hidden = nb_hidden)
+
+  x_scaled <- my_scale(list_xreg$predictors)
   X <- x_scaled$res
-  Xscale <- x_scaled$xsd
-  Xm <- x_scaled$xm
 
   Xs <- La.svd(X)
   rhs <- crossprod(Xs$u, centered_y)
-
   d <- Xs$d
-  lscoef <- crossprod(Xs$vt, rhs/d)
-
-  lsfit <- X %*% lscoef
-  resids <- centered_y - lsfit
-
   k <- length(lambda)
   dx <- length(d)
   div <- d^2 + rep(lambda, rep(dx, k))
@@ -41,18 +24,15 @@ fit_rvfl <- function(x, y, nb_hidden = 5, nodes_sim = c("sobol", "halton", "unif
   dim(a) <- c(dx, k)
   coef <- crossprod(Xs$vt, a)
 
-  dimnames(coef) <- list(names(Xscale), format(lambda))
-  GCV <- colSums((centered_y - X %*% coef)^2)/(nrow(X) - colSums(matrix(d^2/div,
-                                                         dx)))^2
+  #dimnames(coef) <- list(names(Xscale), format(lambda))
+  centered_y_hat <- X %*% coef
+  #GCV <- colSums((centered_y -  centered_y_hat)^2)/(nrow(X) - colSums(matrix(d^2/div,
+  #                                                       dx)))^2
 
-  if (nb_hidden > 0)
-  {
-    return(list(coef = drop(coef), scales = Xscale,
-                lambda = lambda, ym = ym, xm = Xm, GCV = GCV,
-                list_xreg = list_xreg))
-  } else {
-    return(list(coef = drop(coef), scales = Xscale,
-                lambda = lambda, ym = ym, xm = Xm, GCV = GCV))
-  }
+    return(list(coef = drop(coef), scales = x_scaled$xsd,
+                lambda = lambda, ym = ym, xm = x_scaled$xm, nb_hidden = nb_hidden,
+                nn_xm = list_xreg$nn_xm, nn_scales = list_xreg$nn_scales,
+                #GCV = GCV,
+                fitted_values = drop(ym +  centered_y_hat)))
 
 }
