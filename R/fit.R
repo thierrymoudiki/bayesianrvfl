@@ -1,6 +1,5 @@
 fit_rvfl <- function(x, y, nb_hidden = 5,
-                     lambda = 10^seq(from = -5, to = 2, length.out = 100),
-                     seed = 1)
+                     lambda = 10^seq(from = -5, to = 2, length.out = 100))
 {
   stopifnot(nb_hidden > 0)
   x <- as.matrix(x)

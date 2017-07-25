@@ -10,4 +10,4 @@ License: GPL
 Encoding: UTF-8
 LazyData: true
 LinkingTo: Rcpp
-Imports: Rcpp, randtoolbox
+Imports: Rcpp, randtoolbox, foreach

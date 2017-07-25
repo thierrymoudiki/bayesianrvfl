@@ -8,8 +8,10 @@ predict_rvfl <- function(fit_obj, newx)
   scales <- as.vector(fit_obj$scales)
 
   res <- drop(my_scale(x = as.matrix(newx), xm = xm,
-           xsd = scales)%*%fit_obj$coef + fit_obj$ym)
-  colnames(res) <- fit_obj$lambda
+           xsd = scales)%*%as.matrix(fit_obj$coef) + fit_obj$ym)
+
+  if(is.matrix(res))
+    colnames(res) <- fit_obj$lambda
 
   return (res)
 }
