@@ -62,7 +62,9 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
         if (compute_Sigma == TRUE) #compute_Sigma == TRUE && nlambda > 1
         {
             rhsX <- crossprod(Xs$u, X)
-            Sigma <- foreach(i = 1:nlambda)%do%{
+            `%op%` <-  foreach::`%do%`
+            i <- NULL
+            Sigma <- foreach::foreach(i = 1:nlambda)%op%{
               div_i <- d^2 + rep(lambda[i], rep(nb_di, 1))
               aX_i <- drop(d * rhsX)/div_i
               Sigma <- diag(ncol(X)) - crossprod(Xs$vt, aX_i)
@@ -86,21 +88,33 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
     }
 }
 
-set.seed(129)
-
-n <- 7 ; p <- 2
-X <- matrix(rnorm(n * p), n, p) # no intercept!
-y <- rnorm(n)
-fit_rvfl(x = X, y = y)
-
-(fit_obj <- fit_rvfl(x = X, y = y, lambda = c(0.01, 0.05) , compute_Sigma = TRUE))
-predict_rvfl(fit_obj, newx = X)
-
-(fit_obj <- fit_rvfl(x = X, y = y, lambda = c(0.01, 0.05) , compute_Sigma = FALSE))
-predict_rvfl(fit_obj, newx = X)
-
-(fit_obj <- fit_rvfl(x = X, y = y, lambda = 0.01 , compute_Sigma = TRUE))
-predict_rvfl(fit_obj, newx = X)
-
-(fit_obj <- fit_rvfl(x = X, y = y, lambda = 0.01 , compute_Sigma = FALSE))
-predict_rvfl(fit_obj, newx = X)
+# set.seed(129)
+#
+# n <- 7 ; p <- 2
+# X <- matrix(rnorm(n * p), n, p) # no intercept!
+# y <- rnorm(n)
+# fit_rvfl(x = X, y = y)
+#
+# (fit_obj <- fit_rvfl(x = X, y = y, lambda = c(0.01, 0.05) , compute_Sigma = TRUE))
+# predict_rvfl(fit_obj, newx = X)
+#
+# (fit_obj <- fit_rvfl(x = X, y = y, lambda = c(0.01, 0.05) , compute_Sigma = FALSE))
+# predict_rvfl(fit_obj, newx = X)
+#
+# (fit_obj <- fit_rvfl(x = X, y = y, lambda = 0.01 , compute_Sigma = TRUE))
+# predict_rvfl(fit_obj, newx = X)
+#
+# (fit_obj <- fit_rvfl(x = X, y = y, lambda = 0.01 , compute_Sigma = FALSE))
+# predict_rvfl(fit_obj, newx = X)
+#
+# (fit_obj <- fit_rvfl(x = X, y = y, lambda = c(0.01, 0.05) , compute_Sigma = TRUE, nb_hidden = 100))
+# predict_rvfl(fit_obj, newx = X)
+#
+# (fit_obj <- fit_rvfl(x = X, y = y, lambda = c(0.01, 0.05) , compute_Sigma = FALSE, nb_hidden = 100))
+# predict_rvfl(fit_obj, newx = X)
+#
+# (fit_obj <- fit_rvfl(x = X, y = y, lambda = 0.01 , compute_Sigma = TRUE, nb_hidden = 100))
+# predict_rvfl(fit_obj, newx = X)
+#
+# (fit_obj <- fit_rvfl(x = X, y = y, lambda = 0.01 , compute_Sigma = FALSE, nb_hidden = 100))
+# predict_rvfl(fit_obj, newx = X)

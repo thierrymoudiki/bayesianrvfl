@@ -6,9 +6,11 @@ predict_rvfl <- function(fit_obj, newx)
                                 nn_scales = fit_obj$nn_scales)$predictors
   xm <- as.vector(fit_obj$xm)
   scales <- as.vector(fit_obj$scales)
+  scaled_newx <- my_scale(x = as.matrix(newx), xm = xm,
+                          xsd = scales)
+  n <- nrow(scaled_newx)
 
-  res <- drop(my_scale(x = as.matrix(newx), xm = xm,
-           xsd = scales)%*%as.matrix(fit_obj$coef) + fit_obj$ym)
+  res <- drop(scaled_newx%*%as.matrix(fit_obj$coef) + fit_obj$ym)
 
   lambda <- fit_obj$lambda
   nlambda <- length(lambda)
@@ -22,18 +24,19 @@ predict_rvfl <- function(fit_obj, newx)
     if (compute_Sigma == TRUE)
     {
       return (list(mean = res,
-                   sd = sqrt(diag(newx%*%tcrossprod(fit_obj$Sigma, newx) +
-                                    lambda*diag(nrow(newx))))))
+                   sd = sqrt(diag(scaled_newx%*%tcrossprod(fit_obj$Sigma, scaled_newx) +
+                                    lambda*diag(n)))))
     } else {
       return (res)
     }
   } else { # nlambda > 1
     if (compute_Sigma == TRUE)
     {
-      nSigma <- length(fit_obj$Sigma)
-      sd <- foreach(i = 1:nSigma, .combine = cbind)%do%{
-        sqrt(diag(newx%*%tcrossprod(fit_obj$Sigma[[i]], newx) +
-                    lambda[i]*diag(nrow(newx))))
+      i <- NULL
+      `%op%` <-  foreach::`%do%`
+      sd <- foreach::foreach(i = 1:nlambda, .combine = cbind)%op%{
+        sqrt(diag(scaled_newx%*%tcrossprod(fit_obj$Sigma[[i]], scaled_newx) +
+                    lambda[i]*diag(n)))
       }
       colnames(sd) <- lambda
       return (list(mean = res,
