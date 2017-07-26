@@ -10,8 +10,36 @@ predict_rvfl <- function(fit_obj, newx)
   res <- drop(my_scale(x = as.matrix(newx), xm = xm,
            xsd = scales)%*%as.matrix(fit_obj$coef) + fit_obj$ym)
 
-  if(is.matrix(res))
-    colnames(res) <- fit_obj$lambda
+  lambda <- fit_obj$lambda
+  nlambda <- length(lambda)
+  compute_Sigma <- fit_obj$compute_Sigma
 
-  return (res)
+  if(is.matrix(res))
+    colnames(res) <- lambda
+
+  if(nlambda == 1)
+  {
+    if (compute_Sigma == TRUE)
+    {
+      return (list(mean = res,
+                   sd = sqrt(diag(newx%*%tcrossprod(fit_obj$Sigma, newx) +
+                                    lambda*diag(nrow(newx))))))
+    } else {
+      return (res)
+    }
+  } else { # nlambda > 1
+    if (compute_Sigma == TRUE)
+    {
+      nSigma <- length(fit_obj$Sigma)
+      sd <- foreach(i = 1:nSigma, .combine = cbind)%do%{
+        sqrt(diag(newx%*%tcrossprod(fit_obj$Sigma[[i]], newx) +
+                    lambda[i]*diag(nrow(newx))))
+      }
+      colnames(sd) <- lambda
+      return (list(mean = res,
+                   sd = sd))
+    } else {
+      return (res)
+    }
+  }
 }

@@ -150,16 +150,16 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
 
 # 2 - Exemple SLC14 ---------------------------------------------------------
 
-# library(caret)
-# set.seed(7210)
-# train_dat <- SLC14_1(250)
-# large_dat <- SLC14_1(10000)
+ library(caret)
+ set.seed(7210)
+ train_dat <- SLC14_1(250)
+ large_dat <- SLC14_1(10000)
 #
-# head(train_dat)
-# str(train_dat)
+ head(train_dat)
+ str(train_dat)
 #
-# x <- train_dat[, -ncol(train_dat)]
-# y <- train_dat[, ncol(train_dat)]
+ x <- train_dat[, -ncol(train_dat)]
+ y <- train_dat[, ncol(train_dat)]
 # ncol(x)
 # lams <- 10^seq(-5, 10, length.out = 500)
 # (res <- compute_accuracy(x = x, y = y, nb_hidden = 500, k = 10,
@@ -193,8 +193,16 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
 #                 xlab = "nb hidden", ylab = "log(lambda)")
 #
 #
-#  folds <- createDataPartition(y, p = 0.9)
+folds <- createDataPartition(y, p = 0.9)
+fit_obj <- fit_rvfl(x = as.matrix(x[folds$Resample1, ]), y = y[folds$Resample1], nb_hidden = 100, lambda = 1)
+preds <- predict_rvfl(fit_obj, newx = as.matrix(x[-folds$Resample1, ]))
 
-#  plot(y[-folds$Resample1], type = 'l')
-#  lines(predict_rvfl(fit_rvfl(x = x[-folds$Resample1, ], y = y[-folds$Resample1], nb_hidden = 1800, lambda = 1e-06), newx = x),
-#        col = "red")
+upper <- preds$mean + 1.96*sqrt(diag(preds$cov))
+lower <- preds$mean - 1.96*sqrt(diag(preds$cov))
+
+plot(y[-folds$Resample1], type = 'l')
+
+
+plot(preds$mean, type = "l", col = "blue")
+lines(upper, type = "l", col = "red")
+lines(lower, type = "l", col = "red")
