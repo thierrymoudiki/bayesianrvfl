@@ -1,4 +1,4 @@
-predict_rvfl <- function(fit_obj, newx)
+predict_rvfl <- function(fit_obj, newx, ci = NULL, graph = FALSE)
 {
   newx <- create_new_predictors(x = newx,
                                 nb_hidden = fit_obj$nb_hidden,
