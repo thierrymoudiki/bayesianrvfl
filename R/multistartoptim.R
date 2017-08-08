@@ -12,26 +12,26 @@ multistartnlminb <- function(objective, lower, upper, nbstartx, ...)
   matrix_pars <- lower_bound + randtoolbox::sobol(n = nbstartx, dim = nbpar)*(upper_bound - lower_bound)
   `%op%` <-  foreach::`%do%`
 
-  opt_pars <- foreach::foreach(i = 1:nbstartx, .combine = "rbind")%op%
-  {
-    res <- try(nlminb(start = matrix_pars[i, ],
-                      objective = objective,
-                      lower = lower, upper = upper, ...),
-               silent = TRUE)
-    if (class(res)[1] == "try-error")
+  i <- NULL
+    opt_pars <- foreach::foreach(i = 1:nbstartx, .combine = "rbind")%op%
     {
-      rep(1000, nbpar)
-    } else {
-      res$par
+      res <- try(stats::nlminb(start = matrix_pars[i, ],
+                        objective = objective,
+                        lower = lower, upper = upper, ...),
+                 silent = TRUE)
+      if (class(res)[1] == "try-error")
+      {
+        rep(1000, nbpar)
+      } else {
+        res$par
+      }
     }
-  }
 
   opt_vals <- apply(X = opt_pars, MARGIN = 1, FUN = objective)
 
   i_opt <- which.min(opt_vals)
 
   res <- list(as.numeric(opt_pars[i_opt, ]), as.numeric(opt_vals[i_opt]))
-
   names(res) <- c("par", "value")
 
   return(res)

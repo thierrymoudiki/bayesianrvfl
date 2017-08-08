@@ -139,151 +139,151 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
   return(res)
 }
 
-# 1 - Exemple longley ---------------------------------------------------------
-
-lams <- 10^seq(1, 2, length.out = 100)
-vec_nb_hidden <- seq(600, 850, by = 10)
-x <- data.matrix(longley[, 1:6])
-y <- longley[, "Employed"]
-train_index <- createDataPartition(y, p = 0.7)[[1]]
-
-res_cv <- cv_rvfl(x = x[train_index, ], y = y[train_index],
-                  k = 3, repeats = 10,
-                  vec_nb_hidden = vec_nb_hidden,
-                  lams = lams,
-                  seed = 1, cl = 4)
-
-  coord_min <- which(res_cv == min(res_cv), arr.ind = TRUE)
-  res_cv[coord_min[1], coord_min[2]]
-  (best_nb_hidden <- vec_nb_hidden[coord_min[1]])
-  (best_lam <- lams[coord_min[2]])
-
-  fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
-                      nb_hidden = best_nb_hidden, lambda = best_lam,
-                      compute_Sigma = TRUE)
-  (preds <- predict_rvfl(fit_obj, newx = x[-train_index, ]))
-
-  sqrt(mean((preds$mean - y[-train_index])^2))
-
-
-qt95 <- qnorm(1-0.05/2)
-qt80 <- qnorm(1-0.1/2)
-upper <- preds$mean + qt95*preds$sd
-lower <- preds$mean - qt95*preds$sd
-upper80 <- preds$mean + qt80*preds$sd
-lower80 <- preds$mean - qt80*preds$sd
-
-yy <- c(lower, rev(upper))
-yy80 <- c(lower80, rev(upper80))
-nbyy <- length(upper)
-xx <- c(1:nbyy, nbyy:1)
-
-plot(1:nbyy, y[-train_index], type = 'l',
-     ylim = c(min(lower), max(upper)), lwd = 2)
-polygon(xx, yy, col = "gray80", border = FALSE)
-polygon(xx, yy80, col = "gray60", border = FALSE)
-lines(1:nbyy, y[-train_index], lwd = 2)
-lines(preds$mean, col = "blue", lwd = 2)
-
-# 2 - Exemple SLC14 ---------------------------------------------------------
-
- library(caret)
- set.seed(7210)
- train_dat <- SLC14_1(250)
- #large_dat <- SLC14_1(10000)
-
- head(train_dat)
- str(train_dat)
-
- x <- train_dat[, -ncol(train_dat)]
- y <- train_dat[, ncol(train_dat)]
-train_index <- createDataPartition(y, p = 0.7)[[1]]
-
-#lams <- 10^seq(0, 2, length.out = 100)
-lams <- seq(10, 20, length.out = 100)
-vec_nb_hidden <- seq(700, 900, by = 25)
-res_cv <- cv_rvfl(x = x[train_index, ], y = y[train_index],
-                  k = 10, repeats = 5,
-                  vec_nb_hidden = vec_nb_hidden,
-                  lams = lams,
-                  seed = 1, cl = 4)
-
-  coord_min <- which(res_cv == min(res_cv), arr.ind = TRUE)
-  res_cv[coord_min[1], coord_min[2]]
-  (best_nb_hidden <- vec_nb_hidden[coord_min[1]])
-  (best_lam <- lams[coord_min[2]])
-  summary(y)
-
-  fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
-                      nb_hidden = best_nb_hidden, lambda = best_lam,
-                      compute_Sigma = TRUE)
-  (preds <- predict_rvfl(fit_obj, newx = x[-train_index, ]))
-
-  sqrt(mean((preds$mean - y[-train_index])^2))
-
-
-qt95 <- qnorm(1-0.05/2)
-qt80 <- qnorm(1-0.1/2)
-upper <- preds$mean + qt95*preds$sd
-lower <- preds$mean - qt95*preds$sd
-upper80 <- preds$mean + qt80*preds$sd
-lower80 <- preds$mean - qt80*preds$sd
-
-yy <- c(lower, rev(upper))
-yy80 <- c(lower80, rev(upper80))
-nbyy <- length(upper)
-xx <- c(1:nbyy, nbyy:1)
-
-plot(1:nbyy, y[-train_index], type = 'l',
-     ylim = c(min(lower), max(upper)), lwd = 2)
-polygon(xx, yy, col = "gray80", border = FALSE)
-polygon(xx, yy80, col = "gray60", border = FALSE)
-lines(1:nbyy, y[-train_index], lwd = 2)
-lines(preds$mean, col = "blue", lwd = 2)
-
-  # 3 - Exemple mtcars ---------------------------------------------------------
-
-  x <- as.matrix(mtcars[, -1])
-  y <- as.vector(mtcars[, 1])
-
-  train_index <- createDataPartition(y, p = 0.7)[[1]]
-
-  lams <- seq(10, 20, length.out = 100)
-  vec_nb_hidden <- 1:10
-  res_cv <- cv_rvfl(x = x[train_index, ], y = y[train_index],
-                    k = 5, repeats = 10,
-                    vec_nb_hidden = vec_nb_hidden,
-                    lams = lams,
-                    seed = 1, cl = 4)
-
-  (coord_min <- which(res_cv == min(res_cv), arr.ind = TRUE))
-  res_cv[coord_min[1], coord_min[2]]
-  (best_nb_hidden <- vec_nb_hidden[coord_min[1]])
-  (best_lam <- lams[coord_min[2]])
-  summary(y)
-
-  fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
-                      nb_hidden = best_nb_hidden, lambda = best_lam,
-                      compute_Sigma = TRUE)
-  (preds <- predict_rvfl(fit_obj, newx = x[-train_index, ]))
-
-  sqrt(mean((preds$mean - y[-train_index])^2))
-
-  qt95 <- qnorm(1-0.05/2)
-  qt80 <- qnorm(1-0.1/2)
-  upper <- preds$mean + qt95*preds$sd
-  lower <- preds$mean - qt95*preds$sd
-  upper80 <- preds$mean + qt80*preds$sd
-  lower80 <- preds$mean - qt80*preds$sd
-
-  yy <- c(lower, rev(upper))
-  yy80 <- c(lower80, rev(upper80))
-  nbyy <- length(upper)
-  xx <- c(1:nbyy, nbyy:1)
-
-  plot(1:nbyy, y[-train_index], type = 'l',
-       ylim = c(min(lower), max(upper)), lwd = 2)
-  polygon(xx, yy, col = "gray80", border = FALSE)
-  polygon(xx, yy80, col = "gray60", border = FALSE)
-  lines(1:nbyy, y[-train_index], lwd = 2)
-  lines(preds$mean, col = "blue", lwd = 2)
+# # 1 - Exemple longley ---------------------------------------------------------
+#
+# lams <- 10^seq(1, 2, length.out = 100)
+# vec_nb_hidden <- seq(600, 850, by = 10)
+# x <- data.matrix(longley[, 1:6])
+# y <- longley[, "Employed"]
+# train_index <- createDataPartition(y, p = 0.7)[[1]]
+#
+# res_cv <- cv_rvfl(x = x[train_index, ], y = y[train_index],
+#                   k = 3, repeats = 10,
+#                   vec_nb_hidden = vec_nb_hidden,
+#                   lams = lams,
+#                   seed = 1, cl = 4)
+#
+#   coord_min <- which(res_cv == min(res_cv), arr.ind = TRUE)
+#   res_cv[coord_min[1], coord_min[2]]
+#   (best_nb_hidden <- vec_nb_hidden[coord_min[1]])
+#   (best_lam <- lams[coord_min[2]])
+#
+#   fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
+#                       nb_hidden = best_nb_hidden, lambda = best_lam,
+#                       compute_Sigma = TRUE)
+#   (preds <- predict_rvfl(fit_obj, newx = x[-train_index, ]))
+#
+#   sqrt(mean((preds$mean - y[-train_index])^2))
+#
+#
+# qt95 <- qnorm(1-0.05/2)
+# qt80 <- qnorm(1-0.1/2)
+# upper <- preds$mean + qt95*preds$sd
+# lower <- preds$mean - qt95*preds$sd
+# upper80 <- preds$mean + qt80*preds$sd
+# lower80 <- preds$mean - qt80*preds$sd
+#
+# yy <- c(lower, rev(upper))
+# yy80 <- c(lower80, rev(upper80))
+# nbyy <- length(upper)
+# xx <- c(1:nbyy, nbyy:1)
+#
+# plot(1:nbyy, y[-train_index], type = 'l',
+#      ylim = c(min(lower), max(upper)), lwd = 2)
+# polygon(xx, yy, col = "gray80", border = FALSE)
+# polygon(xx, yy80, col = "gray60", border = FALSE)
+# lines(1:nbyy, y[-train_index], lwd = 2)
+# lines(preds$mean, col = "blue", lwd = 2)
+#
+# # 2 - Exemple SLC14 ---------------------------------------------------------
+#
+#  library(caret)
+#  set.seed(7210)
+#  train_dat <- SLC14_1(250)
+#  #large_dat <- SLC14_1(10000)
+#
+#  head(train_dat)
+#  str(train_dat)
+#
+#  x <- train_dat[, -ncol(train_dat)]
+#  y <- train_dat[, ncol(train_dat)]
+# train_index <- createDataPartition(y, p = 0.7)[[1]]
+#
+# #lams <- 10^seq(0, 2, length.out = 100)
+# lams <- seq(10, 20, length.out = 100)
+# vec_nb_hidden <- seq(700, 900, by = 25)
+# res_cv <- cv_rvfl(x = x[train_index, ], y = y[train_index],
+#                   k = 10, repeats = 5,
+#                   vec_nb_hidden = vec_nb_hidden,
+#                   lams = lams,
+#                   seed = 1, cl = 4)
+#
+#   coord_min <- which(res_cv == min(res_cv), arr.ind = TRUE)
+#   res_cv[coord_min[1], coord_min[2]]
+#   (best_nb_hidden <- vec_nb_hidden[coord_min[1]])
+#   (best_lam <- lams[coord_min[2]])
+#   summary(y)
+#
+#   fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
+#                       nb_hidden = best_nb_hidden, lambda = best_lam,
+#                       compute_Sigma = TRUE)
+#   (preds <- predict_rvfl(fit_obj, newx = x[-train_index, ]))
+#
+#   sqrt(mean((preds$mean - y[-train_index])^2))
+#
+#
+# qt95 <- qnorm(1-0.05/2)
+# qt80 <- qnorm(1-0.1/2)
+# upper <- preds$mean + qt95*preds$sd
+# lower <- preds$mean - qt95*preds$sd
+# upper80 <- preds$mean + qt80*preds$sd
+# lower80 <- preds$mean - qt80*preds$sd
+#
+# yy <- c(lower, rev(upper))
+# yy80 <- c(lower80, rev(upper80))
+# nbyy <- length(upper)
+# xx <- c(1:nbyy, nbyy:1)
+#
+# plot(1:nbyy, y[-train_index], type = 'l',
+#      ylim = c(min(lower), max(upper)), lwd = 2)
+# polygon(xx, yy, col = "gray80", border = FALSE)
+# polygon(xx, yy80, col = "gray60", border = FALSE)
+# lines(1:nbyy, y[-train_index], lwd = 2)
+# lines(preds$mean, col = "blue", lwd = 2)
+#
+#   # 3 - Exemple mtcars ---------------------------------------------------------
+#
+  # x <- as.matrix(mtcars[, -1])
+  # y <- as.vector(mtcars[, 1])
+  #
+  # train_index <- createDataPartition(y, p = 0.7)[[1]]
+  #
+  # lams <- seq(10, 20, length.out = 100)
+  # vec_nb_hidden <- 1:10
+  # res_cv <- cv_rvfl(x = x[train_index, ], y = y[train_index],
+  #                   k = 5, repeats = 10,
+  #                   vec_nb_hidden = vec_nb_hidden,
+  #                   lams = lams,
+  #                   seed = 1, cl = 4)
+  #
+  # (coord_min <- which(res_cv == min(res_cv), arr.ind = TRUE))
+  # res_cv[coord_min[1], coord_min[2]]
+  # (best_nb_hidden <- vec_nb_hidden[coord_min[1]])
+  # (best_lam <- lams[coord_min[2]])
+  # summary(y)
+  #
+  # fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
+  #                     nb_hidden = best_nb_hidden, lambda = best_lam,
+  #                     compute_Sigma = TRUE)
+  # (preds <- predict_rvfl(fit_obj, newx = x[-train_index, ]))
+  #
+  # sqrt(mean((preds$mean - y[-train_index])^2))
+  #
+  # qt95 <- qnorm(1-0.05/2)
+  # qt80 <- qnorm(1-0.1/2)
+  # upper <- preds$mean + qt95*preds$sd
+  # lower <- preds$mean - qt95*preds$sd
+  # upper80 <- preds$mean + qt80*preds$sd
+  # lower80 <- preds$mean - qt80*preds$sd
+  #
+  # yy <- c(lower, rev(upper))
+  # yy80 <- c(lower80, rev(upper80))
+  # nbyy <- length(upper)
+  # xx <- c(1:nbyy, nbyy:1)
+  #
+  # plot(1:nbyy, y[-train_index], type = 'l',
+  #      ylim = c(min(lower), max(upper)), lwd = 2)
+  # polygon(xx, yy, col = "gray80", border = FALSE)
+  # polygon(xx, yy80, col = "gray60", border = FALSE)
+  # lines(1:nbyy, y[-train_index], lwd = 2)
+  # lines(preds$mean, col = "blue", lwd = 2)
