@@ -1,4 +1,7 @@
 fit_rvfl <- function(x, y, nb_hidden = 5,
+                     nodes_sim = c("sobol", "halton", "unif"),
+                     activ = c("relu", "sigmoid", "tanh",
+                               "leakyrelu", "elu", "linear"),
                      lambda = 10^seq(from = -5, to = 2, length.out = 100),
                      compute_Sigma = FALSE)
 {
@@ -10,7 +13,11 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
   ym <- mean(y)
   centered_y <- y - ym
 
-  list_xreg <- create_new_predictors(x = x, nb_hidden = nb_hidden)
+  nodes_sim <- match.arg(nodes_sim)
+  activ <- match.arg(activ)
+  list_xreg <- create_new_predictors(x = x, nb_hidden = nb_hidden,
+                                     nodes_sim = nodes_sim,
+                                     activ = activ)
 
   x_scaled <- my_scale(list_xreg$predictors)
   X <- x_scaled$res
