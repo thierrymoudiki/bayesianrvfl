@@ -41,10 +41,15 @@ create_folds <- function(y, k = 10)
 create_folds <- compiler::cmpfun(create_folds)
 
 compute_accuracy <- function(x, y, nb_hidden = 5,
-                 lambda = 10^seq(-2, 10, length.out = 100),
-                 k = 5, repeats = 1, seed = 1)
+                             nodes_sim = c("sobol", "halton", "unif"),
+                             activ = c("relu", "sigmoid", "tanh",
+                                       "leakyrelu", "elu", "linear"),
+                             lambda = 10^seq(-2, 10, length.out = 100),
+                             k = 5, repeats = 1, seed = 1)
 {
   stopifnot(is.wholenumber(nb_hidden))
+  nodes_sim <- match.arg(nodes_sim)
+  activ <- match.arg(activ)
 
   if(round(nrow(x)/k) < 3)
     warnings("Risk of having empty folds, pick a higher k")
@@ -62,6 +67,7 @@ compute_accuracy <- function(x, y, nb_hidden = 5,
         train_index <- -list_folds[[j]][[i]]
         test_index <- -train_index
         fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
+                            nodes_sim = nodes_sim, activ = activ,
                             nb_hidden = nb_hidden, lambda = lambda,
                             compute_Sigma = FALSE)
         predict_rvfl(fit_obj, newx = x[test_index, ]) - y[test_index]
@@ -79,6 +85,7 @@ compute_accuracy <- function(x, y, nb_hidden = 5,
       train_index <- -folds[[i]]
       test_index <- -train_index
       fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
+                          nodes_sim = nodes_sim, activ = activ,
                           nb_hidden = nb_hidden, lambda = lambda,
                           compute_Sigma = FALSE)
       predict_rvfl(fit_obj, newx = x[test_index, ]) - y[test_index]
@@ -91,12 +98,17 @@ compute_accuracy <- function(x, y, nb_hidden = 5,
 compute_accuracy <- compiler::cmpfun(compute_accuracy)
 
 cv_rvfl <- function(x, y, k = 5, repeats = 10,
+                    nodes_sim = c("sobol", "halton", "unif"),
+                    activ = c("relu", "sigmoid", "tanh",
+                              "leakyrelu", "elu", "linear"),
                     vec_nb_hidden = seq(from = 100, to = 1000, by = 100),
                     lams = 10^seq(-2, 10, length.out = 100), seed = 1,
                     cl = NULL)
 {
 
   nb_iter <- length(vec_nb_hidden)
+  nodes_sim <- match.arg(nodes_sim)
+  activ <- match.arg(activ)
 
   allowParallel <- !is.null(cl) && cl > 0
   if(allowParallel)
@@ -127,7 +139,9 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
                              "my_sd"))%op%
   {
    as.vector(compute_accuracy(x = x, y = y,
-                              nb_hidden = vec_nb_hidden[i], k = k,
+                              nb_hidden = vec_nb_hidden[i],
+                              nodes_sim = nodes_sim, activ = activ,
+                              k = k,
                               repeats = repeats,
                               lambda = lams, seed = seed))
   }
@@ -250,7 +264,65 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
   #
   # lams <- seq(10, 20, length.out = 100)
   # vec_nb_hidden <- 1:10
+
+  # best_lam: 12.22222, cv: 2.58
+  #nodes_sim <- "sobol"
+  #activ <- "elu"
+  # best_lam: 14.34343, cv: 2.505841
+  #nodes_sim <- "halton"
+  #activ <- "elu"
+  # best_lam: , cv: 2.505841
+  # best_lam: 8.030303, cv: 2.78051
+  #nodes_sim <- "unif"
+  #activ <- "elu"
+
+  # best_lam: 12.22222 cv: 2.587276
+  #nodes_sim <- "sobol"
+  #activ <- "relu"
+  # best_lam: 14.44444 cv: 2.505732
+  #nodes_sim <- "halton"
+  #activ <- "relu"
+  # best_lam: 8 cv: 2.780729
+  #nodes_sim <- "unif"
+  #activ <- "relu"
+
+  # best_lam: 12.22222 cv: 2.589279
+  #nodes_sim <- "sobol"
+  #activ <- "leakyrelu"
+  # best_lam: 14.34343 cv: 2.504902
+  #nodes_sim <- "halton"
+  #activ <- "leakyrelu"
+  # best_lam: 8 cv: 2.781534
+  #nodes_sim <- "unif"
+  #activ <- "leakyrelu"
+
+  # best_lam: 20.25502 cv: 2.573572
+  #nodes_sim <- "sobol"
+  #activ <- "tanh"
+  # best_lam: 11.62322 cv: 2.634311
+  #nodes_sim <- "halton"
+  #activ <- "tanh"
+  # best_lam: 4.824109  cv: 2.682918
+  #nodes_sim <- "unif"
+  #activ <- "tanh"
+
+  # best_lam: 79.34097 cv: 2.555117
+  #nodes_sim <- "sobol"
+  #activ <- "sigmoid"
+  # best_lam: 17.22586 cv: 2.785476
+  #nodes_sim <- "halton"
+  #activ <- "sigmoid"
+  # best_lam: 3.255089 cv: 2.774128
+  #nodes_sim <- "unif"
+  #activ <- "sigmoid"
+
+  # nodes_sim <- "halton"
+  # activ <- "relu"
+  # lams <- 10^seq(0, 2, length.out = 200)
+  # vec_nb_hidden <- 1:10
+  #
   # res_cv <- cv_rvfl(x = x[train_index, ], y = y[train_index],
+  #                   nodes_sim = nodes_sim, activ = activ,
   #                   k = 5, repeats = 10,
   #                   vec_nb_hidden = vec_nb_hidden,
   #                   lams = lams,
@@ -263,6 +335,7 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
   # summary(y)
   #
   # fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
+  #                     nodes_sim = nodes_sim, activ = activ,
   #                     nb_hidden = best_nb_hidden, lambda = best_lam,
   #                     compute_Sigma = TRUE)
   # (preds <- predict_rvfl(fit_obj, newx = x[-train_index, ]))
