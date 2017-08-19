@@ -1,3 +1,4 @@
+# Acquisition function
 acq_function <- function(fit_obj, x_vec, f_best) {
   # fit_obj object prediction at point x_vec
   # --> Need to call fit_rvfl on training with compute_Sigma = FALSE
@@ -18,4 +19,19 @@ acq_function <- function(fit_obj, x_vec, f_best) {
   # Expected improvement
   return(Sigma_x_vec*(gamma_x_vec*pnorm(gamma_x_vec, mean = 0, sd = 1) +
                         dnorm(gamma_x_vec, mean = 0, sd = 1)))
+}
+
+
+# Function for maximizing the acquisition function
+max_acq_function <- function(fit_obj, x_vec, f_best,
+                             lower, upper, nb_trials = 500, ...) {
+
+  # Objective function = acquisition function
+  OF <- function (x_vec) {acq_function(fit_obj = fit_obj,
+                                       x_vec = x_vec, f_best = f_best)}
+
+  # Try Different Initial Values
+  bayesianrvfl::multistartnlminb(objective = OF,
+                   lower = lower, upper = upper,
+                   nbstartx = nb_trials, minimize == FALSE, ...)
 }
