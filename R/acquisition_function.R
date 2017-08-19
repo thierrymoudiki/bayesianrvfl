@@ -28,10 +28,11 @@ max_acq_function <- function(fit_obj, x_vec, f_best,
 
   # Objective function = acquisition function
   OF <- function (x_vec) {acq_function(fit_obj = fit_obj,
-                                       x_vec = x_vec, f_best = f_best)}
+                                       x_vec = x_vec,
+                                       f_best = f_best)}
 
-  # Try Different Initial Values
+  # Maximize acquisition function
   bayesianrvfl::multistartnlminb(objective = OF,
                    lower = lower, upper = upper,
-                   nbstartx = nb_trials, minimize == FALSE, ...)
+                   nbstartx = nb_trials, minimize = FALSE, ...)
 }

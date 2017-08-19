@@ -2,7 +2,7 @@ multistartnlminb <- function(objective, lower, upper, nbstartx, minimize = TRUE,
 {
   if (minimize == FALSE)
   {
-    objective <- -objective
+    objective <- - objective
   }
   stopifnot(length(lower) == length(upper))
   stopifnot(prod(lower <= upper) == 1)
