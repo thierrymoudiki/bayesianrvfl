@@ -155,11 +155,11 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
 
 # # 1 - Exemple longley ---------------------------------------------------------
 #
-# lams <- 10^seq(1, 2, length.out = 100)
-# vec_nb_hidden <- seq(600, 850, by = 10)
-# x <- data.matrix(longley[, 1:6])
-# y <- longley[, "Employed"]
-# train_index <- createDataPartition(y, p = 0.7)[[1]]
+ # lams <- 10^seq(1, 2, length.out = 100)
+ # vec_nb_hidden <- seq(600, 850, by = 10)
+ # x <- data.matrix(longley[, 1:6])
+ # y <- longley[, "Employed"]
+ # train_index <- createDataPartition(y, p = 0.7)[[1]]
 #
 # res_cv <- cv_rvfl(x = x[train_index, ], y = y[train_index],
 #                   k = 3, repeats = 10,
@@ -198,6 +198,38 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
 # polygon(xx, yy80, col = "gray60", border = FALSE)
 # lines(1:nbyy, y[-train_index], lwd = 2)
 # lines(preds$mean, col = "blue", lwd = 2)
+
+# nodes_sim <- "halton"
+# activ <- "tanh"
+# lams <- 10^seq(-2, 2, length.out = 100)
+# vec_nb_hidden <- 1:10
+# res_cv <- cv_rvfl(x = x[train_index, ], y = y[train_index],
+#                   nodes_sim = nodes_sim, activ = activ,
+#                   k = 3, repeats = 10,
+#                   vec_nb_hidden = vec_nb_hidden,
+#                   lams = lams,
+#                   seed = 1, cl = 4)
+#
+#   coord_min <- which(res_cv == min(res_cv), arr.ind = TRUE)
+#   res_cv[coord_min[1], coord_min[2]]
+#   (best_nb_hidden <- vec_nb_hidden[coord_min[1]])
+#   (best_lam <- lams[coord_min[2]])
+
+# halton relu 3.673985
+# sobol relu 0.7814588
+# unif relu  2.500851
+# unif elu  2.502318
+# halton elu 3.673985
+# sobol elu 0.7846292
+# unif leakyrelu 2.505171
+# sobol leakyrelu 0.7832614
+# halton leakyrelu 3.673985
+# halton sigmoid 1.148266
+# sobol sigmoid 0.8781506
+# unif sigmoid 0.9351309
+# unif tanh 0.7586961
+# sobol tanh 0.6969438
+
 #
 # # 2 - Exemple SLC14 ---------------------------------------------------------
 #
@@ -254,6 +286,23 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
 # polygon(xx, yy80, col = "gray60", border = FALSE)
 # lines(1:nbyy, y[-train_index], lwd = 2)
 # lines(preds$mean, col = "blue", lwd = 2)
+#
+#
+#
+# lams <- seq(-2, 10, length.out = 100)
+# vec_nb_hidden <- seq(2000, 3000, by = 100)
+# res_cv <- cv_rvfl(x = x[train_index, ], y = y[train_index],
+#                   nodes_sim = "sobol", activ = "leakyrelu",
+#                   k = 10, repeats = 5,
+#                   vec_nb_hidden = vec_nb_hidden,
+#                   lams = lams,
+#                   seed = 1, cl = 4)
+# coord_min <- which(res_cv == min(res_cv), arr.ind = TRUE)
+# res_cv[coord_min[1], coord_min[2]]
+# (best_nb_hidden <- vec_nb_hidden[coord_min[1]])
+# (best_lam <- lams[coord_min[2]])
+
+
 #
 #   # 3 - Exemple mtcars ---------------------------------------------------------
 #
