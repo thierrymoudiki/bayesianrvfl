@@ -56,52 +56,68 @@ is.wholenumber <-
 
 # create new predictors
 create_new_predictors <- function(x, nb_hidden = 5,
+                                  nodes_sim = c("sobol", "halton", "unif"),
+                                  activ = c("relu", "sigmoid", "tanh",
+                                            "leakyrelu", "elu", "linear"),
                                   nn_xm = NULL, nn_scales = NULL)
 {
-    relu <- function(x) x*(x>0)
+    x <- as.matrix(x)
+    g <- switch(match.arg(activ),
+              "relu" = function(x) x*(x>0),
+              "sigmoid" = function(x) 1/(1 + exp(-x)),
+              "tanh" = function(x) tanh(x),
+              "leakyrelu" = function(x) x*(x > 0) + 0.01*x*(x <= 0),
+              "elu" = function(x) x*(x >= 0) + 0.01*(exp(x)-1)*(x < 0),
+              "linear" = function(x) x)
+
     p <- ncol(x)
-    w <- remove_zero_cols(2*t(randtoolbox::sobol(nb_hidden + 1, p)) - 1)
+    set.seed(1)
+    w <- remove_zero_cols(switch(match.arg(nodes_sim),
+                                 "sobol" = 2*t(randtoolbox::sobol(nb_hidden + 1, p)) - 1,
+                                 "halton" = 2*t(randtoolbox::halton(nb_hidden, p)) - 1,
+                                 "unif" = matrix(runif(nb_hidden*p, min = -1, max = 1),
+                                                         nrow = p, ncol = nb_hidden)))
 
     if((!is.null(nn_xm) && is.null(nn_scales)) || (is.null(nn_xm) && !is.null(nn_scales)))
       stop("either nn_xm and nn_scales provided, or both left to NULL")
 
     if (is.null(nn_xm) && is.null(nn_scales))
     {
-      scaled_x <- my_scale(x)
-      hidden <- relu(scaled_x$res%*%w)
-      res <- cbind(x, hidden)
+        scaled_x <- my_scale(x)
+        hidden <- g(scaled_x$res%*%w)
+        res <- cbind(x, hidden)
 
-      if (length(colnames(x)) > 0){
-        colnames(res) <- c(colnames(x),
-                           paste0("h", 1:ncol(hidden)))
-      } else {
-        colnames(res) <- c(paste0("x", 1:ncol(x)),
-                           paste0("h", 1:ncol(hidden)))
-      }
+        if (length(colnames(x)) > 0){
+          colnames(res) <- c(colnames(x),
+                             paste0("h", 1:ncol(hidden)))
+        } else {
+          colnames(res) <- c(paste0("x", 1:ncol(x)),
+                             paste0("h", 1:ncol(hidden)))
+        }
 
-      return(list(nn_xm = scaled_x$xm,
-                  nn_scales = scaled_x$xsd,
-                  w = w, predictors = res))
+        return(list(nn_xm = scaled_x$xm,
+                    nn_scales = scaled_x$xsd,
+                    w = w, predictors = res))
     }
 
     if (!is.null(nn_xm) && !is.null(nn_scales))
     {
-      stopifnot(length(nn_xm) == ncol(x) || length(nn_scales) == ncol(x))
-      scaled_x <- my_scale(as.matrix(x),
-                           xm = as.vector(nn_xm),
-                           xsd = as.vector(nn_scales))
-      hidden <- relu(as.matrix(scaled_x)%*%w)
-      res <- cbind(x, hidden)
+        stopifnot(length(nn_xm) == ncol(x) || length(nn_scales) == ncol(x))
+        scaled_x <- my_scale(as.matrix(x),
+                             xm = as.vector(nn_xm),
+                             xsd = as.vector(nn_scales))
+        hidden <- g(as.matrix(scaled_x)%*%w)
+        res <- cbind(x, hidden)
 
-      if (length(colnames(x)) > 0){
-        colnames(res) <- c(colnames(x),
-                           paste0("h", 1:ncol(hidden)))
-      } else {
-        colnames(res) <- c(paste0("x", 1:ncol(x)),
-                           paste0("h", 1:ncol(hidden)))
-      }
+        if (length(colnames(x)) > 0){
+          colnames(res) <- c(colnames(x),
+                             paste0("h", 1:ncol(hidden)))
+        } else {
+          colnames(res) <- c(paste0("x", 1:ncol(x)),
+                             paste0("h", 1:ncol(hidden)))
+        }
 
-      return(list(w = w, predictors = res))
+        return(list(w = w, predictors = res))
     }
 
 

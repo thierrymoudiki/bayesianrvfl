@@ -41,10 +41,15 @@ create_folds <- function(y, k = 10)
 create_folds <- compiler::cmpfun(create_folds)
 
 compute_accuracy <- function(x, y, nb_hidden = 5,
-                 lambda = 10^seq(-2, 10, length.out = 100),
-                 k = 5, repeats = 1, seed = 1)
+                             nodes_sim = c("sobol", "halton", "unif"),
+                             activ = c("relu", "sigmoid", "tanh",
+                                       "leakyrelu", "elu", "linear"),
+                             lambda = 10^seq(-2, 10, length.out = 100),
+                             k = 5, repeats = 1, seed = 1)
 {
   stopifnot(is.wholenumber(nb_hidden))
+  nodes_sim <- match.arg(nodes_sim)
+  activ <- match.arg(activ)
 
   if(round(nrow(x)/k) < 3)
     warnings("Risk of having empty folds, pick a higher k")
@@ -62,6 +67,7 @@ compute_accuracy <- function(x, y, nb_hidden = 5,
         train_index <- -list_folds[[j]][[i]]
         test_index <- -train_index
         fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
+                            nodes_sim = nodes_sim, activ = activ,
                             nb_hidden = nb_hidden, lambda = lambda,
                             compute_Sigma = FALSE)
         predict_rvfl(fit_obj, newx = x[test_index, ]) - y[test_index]
@@ -79,6 +85,7 @@ compute_accuracy <- function(x, y, nb_hidden = 5,
       train_index <- -folds[[i]]
       test_index <- -train_index
       fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
+                          nodes_sim = nodes_sim, activ = activ,
                           nb_hidden = nb_hidden, lambda = lambda,
                           compute_Sigma = FALSE)
       predict_rvfl(fit_obj, newx = x[test_index, ]) - y[test_index]
@@ -91,12 +98,17 @@ compute_accuracy <- function(x, y, nb_hidden = 5,
 compute_accuracy <- compiler::cmpfun(compute_accuracy)
 
 cv_rvfl <- function(x, y, k = 5, repeats = 10,
+                    nodes_sim = c("sobol", "halton", "unif"),
+                    activ = c("relu", "sigmoid", "tanh",
+                              "leakyrelu", "elu", "linear"),
                     vec_nb_hidden = seq(from = 100, to = 1000, by = 100),
                     lams = 10^seq(-2, 10, length.out = 100), seed = 1,
                     cl = NULL)
 {
 
   nb_iter <- length(vec_nb_hidden)
+  nodes_sim <- match.arg(nodes_sim)
+  activ <- match.arg(activ)
 
   allowParallel <- !is.null(cl) && cl > 0
   if(allowParallel)
@@ -127,7 +139,9 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
                              "my_sd"))%op%
   {
    as.vector(compute_accuracy(x = x, y = y,
-                              nb_hidden = vec_nb_hidden[i], k = k,
+                              nb_hidden = vec_nb_hidden[i],
+                              nodes_sim = nodes_sim, activ = activ,
+                              k = k,
                               repeats = repeats,
                               lambda = lams, seed = seed))
   }
@@ -139,13 +153,13 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
   return(res)
 }
 
-# 1 - Exemple longley ---------------------------------------------------------
-
-# lams <- 10^seq(1, 2, length.out = 100)
-# vec_nb_hidden <- seq(600, 850, by = 25)
-# x <- data.matrix(longley[, 1:6])
-# y <- longley[, "Employed"]
-# train_index <- createDataPartition(y, p = 0.7)[[1]]
+# # 1 - Exemple longley ---------------------------------------------------------
+#
+ # lams <- 10^seq(1, 2, length.out = 100)
+ # vec_nb_hidden <- seq(600, 850, by = 10)
+ # x <- data.matrix(longley[, 1:6])
+ # y <- longley[, "Employed"]
+ # train_index <- createDataPartition(y, p = 0.7)[[1]]
 #
 # res_cv <- cv_rvfl(x = x[train_index, ], y = y[train_index],
 #                   k = 3, repeats = 10,
@@ -165,27 +179,64 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
 #
 #   sqrt(mean((preds$mean - y[-train_index])^2))
 #
-#   upper <- preds$mean + 1.96*preds$sd
-#   lower <- preds$mean - 1.96*preds$sd
 #
-# upper <- preds$mean + 1.96*preds$sd
-# lower <- preds$mean - 1.96*preds$sd
+# qt95 <- qnorm(1-0.05/2)
+# qt80 <- qnorm(1-0.1/2)
+# upper <- preds$mean + qt95*preds$sd
+# lower <- preds$mean - qt95*preds$sd
+# upper80 <- preds$mean + qt80*preds$sd
+# lower80 <- preds$mean - qt80*preds$sd
+#
 # yy <- c(lower, rev(upper))
+# yy80 <- c(lower80, rev(upper80))
 # nbyy <- length(upper)
 # xx <- c(1:nbyy, nbyy:1)
 #
-# plot(1:nbyy, y[-train_index], type = 'l', ylim = c(min(lower), max(upper)), lwd = 2)
-# polygon(xx, yy, col = "gray60", border = FALSE)
+# plot(1:nbyy, y[-train_index], type = 'l',
+#      ylim = c(min(lower), max(upper)), lwd = 2)
+# polygon(xx, yy, col = "gray80", border = FALSE)
+# polygon(xx, yy80, col = "gray60", border = FALSE)
 # lines(1:nbyy, y[-train_index], lwd = 2)
-# lines(preds$mean, col = "blue", lwd = 2, lty = 2)
+# lines(preds$mean, col = "blue", lwd = 2)
 
+# nodes_sim <- "halton"
+# activ <- "tanh"
+# lams <- 10^seq(-2, 2, length.out = 100)
+# vec_nb_hidden <- 1:10
+# res_cv <- cv_rvfl(x = x[train_index, ], y = y[train_index],
+#                   nodes_sim = nodes_sim, activ = activ,
+#                   k = 3, repeats = 10,
+#                   vec_nb_hidden = vec_nb_hidden,
+#                   lams = lams,
+#                   seed = 1, cl = 4)
+#
+#   coord_min <- which(res_cv == min(res_cv), arr.ind = TRUE)
+#   res_cv[coord_min[1], coord_min[2]]
+#   (best_nb_hidden <- vec_nb_hidden[coord_min[1]])
+#   (best_lam <- lams[coord_min[2]])
 
-# 2 - Exemple SLC14 ---------------------------------------------------------
+# halton relu 3.673985
+# sobol relu 0.7814588
+# unif relu  2.500851
+# unif elu  2.502318
+# halton elu 3.673985
+# sobol elu 0.7846292
+# unif leakyrelu 2.505171
+# sobol leakyrelu 0.7832614
+# halton leakyrelu 3.673985
+# halton sigmoid 1.148266
+# sobol sigmoid 0.8781506
+# unif sigmoid 0.9351309
+# unif tanh 0.7586961
+# sobol tanh 0.6969438
 
+#
+# # 2 - Exemple SLC14 ---------------------------------------------------------
+#
 #  library(caret)
 #  set.seed(7210)
 #  train_dat <- SLC14_1(250)
-#  large_dat <- SLC14_1(10000)
+#  #large_dat <- SLC14_1(10000)
 #
 #  head(train_dat)
 #  str(train_dat)
@@ -216,19 +267,45 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
 #
 #   sqrt(mean((preds$mean - y[-train_index])^2))
 #
-#   upper <- preds$mean + 1.96*preds$sd
-#   lower <- preds$mean - 1.96*preds$sd
-#   yy <- c(lower, rev(upper))
-#   nbyy <- length(upper)
-#   xx <- c(1:nbyy, nbyy:1)
 #
-#   plot(1:nbyy, y[-train_index], type = 'l', ylim = c(min(lower), max(upper)), lwd = 2)
-#   polygon(xx, yy, col = "gray60", border = FALSE)
-#   lines(1:nbyy, y[-train_index], lwd = 2)
-#   lines(preds$mean, col = "blue", lwd = 2, lty = 2)
+# qt95 <- qnorm(1-0.05/2)
+# qt80 <- qnorm(1-0.1/2)
+# upper <- preds$mean + qt95*preds$sd
+# lower <- preds$mean - qt95*preds$sd
+# upper80 <- preds$mean + qt80*preds$sd
+# lower80 <- preds$mean - qt80*preds$sd
+#
+# yy <- c(lower, rev(upper))
+# yy80 <- c(lower80, rev(upper80))
+# nbyy <- length(upper)
+# xx <- c(1:nbyy, nbyy:1)
+#
+# plot(1:nbyy, y[-train_index], type = 'l',
+#      ylim = c(min(lower), max(upper)), lwd = 2)
+# polygon(xx, yy, col = "gray80", border = FALSE)
+# polygon(xx, yy80, col = "gray60", border = FALSE)
+# lines(1:nbyy, y[-train_index], lwd = 2)
+# lines(preds$mean, col = "blue", lwd = 2)
+#
+#
+#
+# lams <- seq(-2, 10, length.out = 100)
+# vec_nb_hidden <- seq(2000, 3000, by = 100)
+# res_cv <- cv_rvfl(x = x[train_index, ], y = y[train_index],
+#                   nodes_sim = "sobol", activ = "leakyrelu",
+#                   k = 10, repeats = 5,
+#                   vec_nb_hidden = vec_nb_hidden,
+#                   lams = lams,
+#                   seed = 1, cl = 4)
+# coord_min <- which(res_cv == min(res_cv), arr.ind = TRUE)
+# res_cv[coord_min[1], coord_min[2]]
+# (best_nb_hidden <- vec_nb_hidden[coord_min[1]])
+# (best_lam <- lams[coord_min[2]])
 
-  # 3 - Exemple mtcars ---------------------------------------------------------
 
+#
+#   # 3 - Exemple mtcars ---------------------------------------------------------
+#
   # x <- as.matrix(mtcars[, -1])
   # y <- as.vector(mtcars[, 1])
   #
@@ -236,7 +313,65 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
   #
   # lams <- seq(10, 20, length.out = 100)
   # vec_nb_hidden <- 1:10
+
+  # best_lam: 12.22222, cv: 2.58
+  #nodes_sim <- "sobol"
+  #activ <- "elu"
+  # best_lam: 14.34343, cv: 2.505841
+  #nodes_sim <- "halton"
+  #activ <- "elu"
+  # best_lam: , cv: 2.505841
+  # best_lam: 8.030303, cv: 2.78051
+  #nodes_sim <- "unif"
+  #activ <- "elu"
+
+  # best_lam: 12.22222 cv: 2.587276
+  #nodes_sim <- "sobol"
+  #activ <- "relu"
+  # best_lam: 14.44444 cv: 2.505732
+  #nodes_sim <- "halton"
+  #activ <- "relu"
+  # best_lam: 8 cv: 2.780729
+  #nodes_sim <- "unif"
+  #activ <- "relu"
+
+  # best_lam: 12.22222 cv: 2.589279
+  #nodes_sim <- "sobol"
+  #activ <- "leakyrelu"
+  # best_lam: 14.34343 cv: 2.504902
+  #nodes_sim <- "halton"
+  #activ <- "leakyrelu"
+  # best_lam: 8 cv: 2.781534
+  #nodes_sim <- "unif"
+  #activ <- "leakyrelu"
+
+  # best_lam: 20.25502 cv: 2.573572
+  #nodes_sim <- "sobol"
+  #activ <- "tanh"
+  # best_lam: 11.62322 cv: 2.634311
+  #nodes_sim <- "halton"
+  #activ <- "tanh"
+  # best_lam: 4.824109  cv: 2.682918
+  #nodes_sim <- "unif"
+  #activ <- "tanh"
+
+  # best_lam: 79.34097 cv: 2.555117
+  #nodes_sim <- "sobol"
+  #activ <- "sigmoid"
+  # best_lam: 17.22586 cv: 2.785476
+  #nodes_sim <- "halton"
+  #activ <- "sigmoid"
+  # best_lam: 3.255089 cv: 2.774128
+  #nodes_sim <- "unif"
+  #activ <- "sigmoid"
+
+  # nodes_sim <- "halton"
+  # activ <- "relu"
+  # lams <- 10^seq(0, 2, length.out = 200)
+  # vec_nb_hidden <- 1:10
+  #
   # res_cv <- cv_rvfl(x = x[train_index, ], y = y[train_index],
+  #                   nodes_sim = nodes_sim, activ = activ,
   #                   k = 5, repeats = 10,
   #                   vec_nb_hidden = vec_nb_hidden,
   #                   lams = lams,
@@ -249,19 +384,28 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
   # summary(y)
   #
   # fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
+  #                     nodes_sim = nodes_sim, activ = activ,
   #                     nb_hidden = best_nb_hidden, lambda = best_lam,
   #                     compute_Sigma = TRUE)
   # (preds <- predict_rvfl(fit_obj, newx = x[-train_index, ]))
   #
   # sqrt(mean((preds$mean - y[-train_index])^2))
   #
-  # upper <- preds$mean + 1.96*preds$sd
-  # lower <- preds$mean - 1.96*preds$sd
+  # qt95 <- qnorm(1-0.05/2)
+  # qt80 <- qnorm(1-0.1/2)
+  # upper <- preds$mean + qt95*preds$sd
+  # lower <- preds$mean - qt95*preds$sd
+  # upper80 <- preds$mean + qt80*preds$sd
+  # lower80 <- preds$mean - qt80*preds$sd
+  #
   # yy <- c(lower, rev(upper))
+  # yy80 <- c(lower80, rev(upper80))
   # nbyy <- length(upper)
   # xx <- c(1:nbyy, nbyy:1)
   #
-  # plot(1:nbyy, y[-train_index], type = 'l', ylim = c(min(lower), max(upper)), lwd = 2)
-  # polygon(xx, yy, col = "gray60", border = FALSE)
+  # plot(1:nbyy, y[-train_index], type = 'l',
+  #      ylim = c(min(lower), max(upper)), lwd = 2)
+  # polygon(xx, yy, col = "gray80", border = FALSE)
+  # polygon(xx, yy80, col = "gray60", border = FALSE)
   # lines(1:nbyy, y[-train_index], lwd = 2)
-  # lines(preds$mean, col = "blue", lwd = 2, lty = 2)
+  # lines(preds$mean, col = "blue", lwd = 2)
