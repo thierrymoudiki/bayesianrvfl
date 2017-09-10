@@ -105,6 +105,8 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
                     lams = 10^seq(-2, 10, length.out = 100), seed = 1,
                     cl = NULL)
 {
+  x <- as.matrix(x)
+  y <- as.vector(y)
 
   nb_iter <- length(vec_nb_hidden)
   nodes_sim <- match.arg(nodes_sim)
