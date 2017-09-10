@@ -47,7 +47,7 @@ compute_accuracy <- function(x, y, nb_hidden = 5,
   stopifnot(is.wholenumber(nb_hidden))
 
   if(round(nrow(x)/k) < 3)
-    stop("Risk of having empty folds, pick a higher k")
+    warnings("Risk of having empty folds, pick a higher k")
 
   `%op%` <-  foreach::`%do%`
 
@@ -62,7 +62,8 @@ compute_accuracy <- function(x, y, nb_hidden = 5,
         train_index <- -list_folds[[j]][[i]]
         test_index <- -train_index
         fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
-                            nb_hidden = nb_hidden, lambda = lambda)
+                            nb_hidden = nb_hidden, lambda = lambda,
+                            compute_Sigma = FALSE)
         predict_rvfl(fit_obj, newx = x[test_index, ]) - y[test_index]
       }
     }
@@ -78,7 +79,8 @@ compute_accuracy <- function(x, y, nb_hidden = 5,
       train_index <- -folds[[i]]
       test_index <- -train_index
       fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
-                          nb_hidden = nb_hidden, lambda = lambda)
+                          nb_hidden = nb_hidden, lambda = lambda,
+                          compute_Sigma = FALSE)
       predict_rvfl(fit_obj, newx = x[test_index, ]) - y[test_index]
     }
 
@@ -139,62 +141,127 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
 
 # 1 - Exemple longley ---------------------------------------------------------
 
-# lams <- 10^seq(-2, 10, length.out = 1000)
-# x <- longley[,-1]
-# y <- longley[,1]
-# (res <- compute_accuracy(x = x, y = y, nb_hidden = 100, k = 5,
-#                          repeats = 10, lambda = lams, seed = 2))
-# plot(log(lams), res, type = 'l')
-# res[which.min(res)]
-# lams[which.min(res)]
+# lams <- 10^seq(1, 2, length.out = 100)
+# vec_nb_hidden <- seq(600, 850, by = 25)
+# x <- data.matrix(longley[, 1:6])
+# y <- longley[, "Employed"]
+# train_index <- createDataPartition(y, p = 0.7)[[1]]
+#
+# res_cv <- cv_rvfl(x = x[train_index, ], y = y[train_index],
+#                   k = 3, repeats = 10,
+#                   vec_nb_hidden = vec_nb_hidden,
+#                   lams = lams,
+#                   seed = 1, cl = 4)
+#
+#   coord_min <- which(res_cv == min(res_cv), arr.ind = TRUE)
+#   res_cv[coord_min[1], coord_min[2]]
+#   (best_nb_hidden <- vec_nb_hidden[coord_min[1]])
+#   (best_lam <- lams[coord_min[2]])
+#
+#   fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
+#                       nb_hidden = best_nb_hidden, lambda = best_lam,
+#                       compute_Sigma = TRUE)
+#   (preds <- predict_rvfl(fit_obj, newx = x[-train_index, ]))
+#
+#   sqrt(mean((preds$mean - y[-train_index])^2))
+#
+#   upper <- preds$mean + 1.96*preds$sd
+#   lower <- preds$mean - 1.96*preds$sd
+#
+# upper <- preds$mean + 1.96*preds$sd
+# lower <- preds$mean - 1.96*preds$sd
+# yy <- c(lower, rev(upper))
+# nbyy <- length(upper)
+# xx <- c(1:nbyy, nbyy:1)
+#
+# plot(1:nbyy, y[-train_index], type = 'l', ylim = c(min(lower), max(upper)), lwd = 2)
+# polygon(xx, yy, col = "gray60", border = FALSE)
+# lines(1:nbyy, y[-train_index], lwd = 2)
+# lines(preds$mean, col = "blue", lwd = 2, lty = 2)
+
 
 # 2 - Exemple SLC14 ---------------------------------------------------------
 
-# library(caret)
-# set.seed(7210)
-# train_dat <- SLC14_1(250)
-# large_dat <- SLC14_1(10000)
+#  library(caret)
+#  set.seed(7210)
+#  train_dat <- SLC14_1(250)
+#  large_dat <- SLC14_1(10000)
 #
-# head(train_dat)
-# str(train_dat)
+#  head(train_dat)
+#  str(train_dat)
 #
-# x <- train_dat[, -ncol(train_dat)]
-# y <- train_dat[, ncol(train_dat)]
-# ncol(x)
-# lams <- 10^seq(-5, 10, length.out = 500)
-# (res <- compute_accuracy(x = x, y = y, nb_hidden = 500, k = 10,
-#                          repeats = 5, lambda = lams, seed = 2))
-# plot(log(lams), res, type = 'l')
-# res[which.min(res)]
-# lams[which.min(res)]
+#  x <- train_dat[, -ncol(train_dat)]
+#  y <- train_dat[, ncol(train_dat)]
+# train_index <- createDataPartition(y, p = 0.7)[[1]]
 #
-# # parallel
-#  vec_nb_hidden <- seq(from = 100, to = 2000, by = 100)
-#  lams <- seq(0, 0.0001, length.out = 100)
-# #
-#  ptm <- proc.time()
-#  cv_res <- cv_rvfl(x = x, y = y, vec_nb_hidden = vec_nb_hidden,
-#                    lams = lams, k = 10, repeats = 5, seed = 308, cl = 4)
-#  proc.time() - ptm
-# #
-#  coord_min <- which(cv_res == min(cv_res), arr.ind = TRUE)
-#  cv_res[coord_min[1], coord_min[2]]
-#  (best_nb_hidden <- vec_nb_hidden[coord_min[1]])
-#  (best_lam <- lams[coord_min[2]])
-# #
-#  filled.contour(x = vec_nb_hidden,
-#                 y = lams, z = cv_res,
-#                 color.palette = terrain.colors,
-#                 xlab = "nb hidden", ylab = "lambda")
+# #lams <- 10^seq(0, 2, length.out = 100)
+# lams <- seq(10, 20, length.out = 100)
+# vec_nb_hidden <- seq(700, 900, by = 25)
+# res_cv <- cv_rvfl(x = x[train_index, ], y = y[train_index],
+#                   k = 10, repeats = 5,
+#                   vec_nb_hidden = vec_nb_hidden,
+#                   lams = lams,
+#                   seed = 1, cl = 4)
 #
-#  filled.contour(x = vec_nb_hidden,
-#                 y = log(lams), z = cv_res,
-#                 color.palette = terrain.colors,
-#                 xlab = "nb hidden", ylab = "log(lambda)")
+#   coord_min <- which(res_cv == min(res_cv), arr.ind = TRUE)
+#   res_cv[coord_min[1], coord_min[2]]
+#   (best_nb_hidden <- vec_nb_hidden[coord_min[1]])
+#   (best_lam <- lams[coord_min[2]])
+#   summary(y)
 #
+#   fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
+#                       nb_hidden = best_nb_hidden, lambda = best_lam,
+#                       compute_Sigma = TRUE)
+#   (preds <- predict_rvfl(fit_obj, newx = x[-train_index, ]))
 #
-#  folds <- createDataPartition(y, p = 0.9)
+#   sqrt(mean((preds$mean - y[-train_index])^2))
+#
+#   upper <- preds$mean + 1.96*preds$sd
+#   lower <- preds$mean - 1.96*preds$sd
+#   yy <- c(lower, rev(upper))
+#   nbyy <- length(upper)
+#   xx <- c(1:nbyy, nbyy:1)
+#
+#   plot(1:nbyy, y[-train_index], type = 'l', ylim = c(min(lower), max(upper)), lwd = 2)
+#   polygon(xx, yy, col = "gray60", border = FALSE)
+#   lines(1:nbyy, y[-train_index], lwd = 2)
+#   lines(preds$mean, col = "blue", lwd = 2, lty = 2)
 
-#  plot(y[-folds$Resample1], type = 'l')
-#  lines(predict_rvfl(fit_rvfl(x = x[-folds$Resample1, ], y = y[-folds$Resample1], nb_hidden = 1800, lambda = 1e-06), newx = x),
-#        col = "red")
+  # 3 - Exemple mtcars ---------------------------------------------------------
+
+  # x <- as.matrix(mtcars[, -1])
+  # y <- as.vector(mtcars[, 1])
+  #
+  # train_index <- createDataPartition(y, p = 0.7)[[1]]
+  #
+  # lams <- seq(10, 20, length.out = 100)
+  # vec_nb_hidden <- 1:10
+  # res_cv <- cv_rvfl(x = x[train_index, ], y = y[train_index],
+  #                   k = 5, repeats = 10,
+  #                   vec_nb_hidden = vec_nb_hidden,
+  #                   lams = lams,
+  #                   seed = 1, cl = 4)
+  #
+  # (coord_min <- which(res_cv == min(res_cv), arr.ind = TRUE))
+  # res_cv[coord_min[1], coord_min[2]]
+  # (best_nb_hidden <- vec_nb_hidden[coord_min[1]])
+  # (best_lam <- lams[coord_min[2]])
+  # summary(y)
+  #
+  # fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
+  #                     nb_hidden = best_nb_hidden, lambda = best_lam,
+  #                     compute_Sigma = TRUE)
+  # (preds <- predict_rvfl(fit_obj, newx = x[-train_index, ]))
+  #
+  # sqrt(mean((preds$mean - y[-train_index])^2))
+  #
+  # upper <- preds$mean + 1.96*preds$sd
+  # lower <- preds$mean - 1.96*preds$sd
+  # yy <- c(lower, rev(upper))
+  # nbyy <- length(upper)
+  # xx <- c(1:nbyy, nbyy:1)
+  #
+  # plot(1:nbyy, y[-train_index], type = 'l', ylim = c(min(lower), max(upper)), lwd = 2)
+  # polygon(xx, yy, col = "gray60", border = FALSE)
+  # lines(1:nbyy, y[-train_index], lwd = 2)
+  # lines(preds$mean, col = "blue", lwd = 2, lty = 2)
