@@ -1,5 +1,9 @@
-multistartnlminb <- function(objective, lower, upper, nbstartx, ...)
+multistartnlminb <- function(objective, lower, upper, nbstartx, minimize = TRUE, ...)
 {
+  if (minimize == FALSE)
+  {
+    objective <- - objective
+  }
   stopifnot(length(lower) == length(upper))
   stopifnot(prod(lower <= upper) == 1)
   nbpar <- length(lower)
