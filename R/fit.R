@@ -22,6 +22,7 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
   x_scaled <- my_scale(list_xreg$predictors)
   X <- x_scaled$res
 
+  # inspired from MASS::lm.ridge
   Xs <- La.svd(X)
   rhs <- crossprod(Xs$u, centered_y)
   d <- Xs$d
@@ -94,34 +95,3 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
         }
     }
 }
-
-# set.seed(129)
-#
-# n <- 7 ; p <- 2
-# X <- matrix(rnorm(n * p), n, p) # no intercept!
-# y <- rnorm(n)
-# fit_rvfl(x = X, y = y)
-#
-# (fit_obj <- fit_rvfl(x = X, y = y, lambda = c(0.01, 0.05) , compute_Sigma = TRUE))
-# predict_rvfl(fit_obj, newx = X)
-#
-# (fit_obj <- fit_rvfl(x = X, y = y, lambda = c(0.01, 0.05) , compute_Sigma = FALSE))
-# predict_rvfl(fit_obj, newx = X)
-#
-# (fit_obj <- fit_rvfl(x = X, y = y, lambda = 0.01 , compute_Sigma = TRUE))
-# predict_rvfl(fit_obj, newx = X)
-#
-# (fit_obj <- fit_rvfl(x = X, y = y, lambda = 0.01 , compute_Sigma = FALSE))
-# predict_rvfl(fit_obj, newx = X)
-#
-# (fit_obj <- fit_rvfl(x = X, y = y, lambda = c(0.01, 0.05) , compute_Sigma = TRUE, nb_hidden = 100))
-# predict_rvfl(fit_obj, newx = X)
-#
-# (fit_obj <- fit_rvfl(x = X, y = y, lambda = c(0.01, 0.05) , compute_Sigma = FALSE, nb_hidden = 100))
-# predict_rvfl(fit_obj, newx = X)
-#
-# (fit_obj <- fit_rvfl(x = X, y = y, lambda = 0.01 , compute_Sigma = TRUE, nb_hidden = 100))
-# predict_rvfl(fit_obj, newx = X)
-#
-# (fit_obj <- fit_rvfl(x = X, y = y, lambda = 0.01 , compute_Sigma = FALSE, nb_hidden = 100))
-# predict_rvfl(fit_obj, newx = X)
