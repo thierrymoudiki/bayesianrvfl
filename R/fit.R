@@ -30,12 +30,15 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
   div <- d^2 + rep(lambda, rep(nb_di, nlambda))
   a <- drop(d * rhs)/div
   dim(a) <- c(nb_di, nlambda)
+  n <- nrow(X)
 
     if (nlambda == 1)
     {
       vt <- Xs$vt
       coef <- crossprod(vt, a)
       centered_y_hat <- X %*% coef
+      GCV <- colSums((centered_y - centered_y_hat)^2)/(n - colSums(matrix(d^2/div,
+                                                             nb_di)))^2
 
         if (compute_Sigma == TRUE)
         {
@@ -48,24 +51,25 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
                       xm = x_scaled$xm, nb_hidden = nb_hidden,
                       nn_xm = list_xreg$nn_xm, nn_scales = list_xreg$nn_scales,
                       fitted_values = drop(ym +  centered_y_hat),
+                      GCV = GCV,
                       compute_Sigma = compute_Sigma))
         } else { #else: compute_Sigma == FALSE && nlambda == 1
-
           return(list(coef = drop(coef), scales = x_scaled$xsd,
                       lambda = lambda, ym = ym, xm = x_scaled$xm,
                       nb_hidden = nb_hidden, nn_xm = list_xreg$nn_xm,
                       nn_scales = list_xreg$nn_scales,
                       fitted_values = drop(ym +  centered_y_hat),
+                      GCV = GCV,
                       compute_Sigma = compute_Sigma))
         }
-
     } else { #else: nlambda > 1
-
         coef <- crossprod(Xs$vt, a)
         colnames(coef) <- lambda
         centered_y_hat <- X %*% coef
         fitted_values <- drop(ym +  centered_y_hat)
         colnames(fitted_values) <- lambda
+        GCV <- colSums((centered_y - centered_y_hat)^2)/(n - colSums(matrix(d^2/div,
+                                                                            nb_di)))^2
 
         if (compute_Sigma == TRUE) #compute_Sigma == TRUE && nlambda > 1
         {
@@ -84,6 +88,7 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
                       lambda = lambda, ym = ym, xm = x_scaled$xm, nb_hidden = nb_hidden,
                       nn_xm = list_xreg$nn_xm, nn_scales = list_xreg$nn_scales,
                       fitted_values = fitted_values,
+                      GCV = GCV,
                       compute_Sigma = compute_Sigma))
         } else { #else: compute_Sigma == FALSE && length(lambda) == 1
 
@@ -91,7 +96,9 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
                       lambda = lambda, ym = ym, xm = x_scaled$xm,
                       nb_hidden = nb_hidden, nn_xm = list_xreg$nn_xm, nn_scales = list_xreg$nn_scales,
                       fitted_values = drop(ym +  centered_y_hat),
+                      GCV = GCV,
                       compute_Sigma = compute_Sigma))
         }
     }
 }
+

@@ -2,6 +2,6 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 cbind_cpp <- function(x, y) {
-    .Call('bayesianrvfl_cbind_cpp', PACKAGE = 'bayesianrvfl', x, y)
+    .Call('_bayesianrvfl_cbind_cpp', PACKAGE = 'bayesianrvfl', x, y)
 }
 

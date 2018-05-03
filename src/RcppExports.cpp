@@ -7,7 +7,7 @@ using namespace Rcpp;
 
 // cbind_cpp
 NumericMatrix cbind_cpp(NumericMatrix x, NumericMatrix y);
-RcppExport SEXP bayesianrvfl_cbind_cpp(SEXP xSEXP, SEXP ySEXP) {
+RcppExport SEXP _bayesianrvfl_cbind_cpp(SEXP xSEXP, SEXP ySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -16,4 +16,14 @@ BEGIN_RCPP
     rcpp_result_gen = Rcpp::wrap(cbind_cpp(x, y));
     return rcpp_result_gen;
 END_RCPP
+}
+
+static const R_CallMethodDef CallEntries[] = {
+    {"_bayesianrvfl_cbind_cpp", (DL_FUNC) &_bayesianrvfl_cbind_cpp, 2},
+    {NULL, NULL, 0}
+};
+
+RcppExport void R_init_bayesianrvfl(DllInfo *dll) {
+    R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
+    R_useDynamicSymbols(dll, FALSE);
 }
