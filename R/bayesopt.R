@@ -264,8 +264,70 @@
 
 # 1 - 3 random search ---------------------------------------------------------------
 
-  random_search_opt <- function()
+  random_search_opt <- function(objective, nb_iter = 100, lower, upper,
+                                sim = c("sobol", "unif"), seed = 123,
+                                cl = NULL, ...)
   {
+    OF <- function(y) objective(y, ...)
+    rep_1_nb_iter <- rep(1, nb_iter)
+    lower_mat <- tcrossprod(rep_1_nb_iter, lower)
+    upper_mat <- tcrossprod(rep_1_nb_iter, upper)
+    sim <- match.arg(sim)
 
+      if (sim == "sobol")
+      {
+        searched_points <- lower_mat + (upper_mat -
+                                          lower_mat)*randtoolbox::sobol(n = nb_iter,
+                                                                        dim = length(lower))
+      }
+
+      if (sim == "unif")
+      {
+        set.seed(seed)
+        searched_points <- lower_mat + (upper_mat -
+                                          lower_mat)*matrix(runif(nb_iter*length(lower)),
+                                                            nrow = nrow(lower_mat))
+      }
+
+    if (is.null(cl)){
+      pb <- txtProgressBar(min = 1, max = nb_iter, style = 3)
+
+      `%op%` <-  foreach::`%do%`
+
+      res <- foreach::foreach(i = 1:nb_iter, .combine = c,
+                              .verbose = FALSE,
+                              .errorhandling = "stop")%op%{
+
+                                setTxtProgressBar(pb, i)
+
+                                OF(searched_points[i, ])
+                              }
+
+      close(pb)
+
+    } else {
+      cl_SOCK <- parallel::makeCluster(cl, type = "SOCK")
+      doSNOW::registerDoSNOW(cl_SOCK)
+
+      pb <- txtProgressBar(min = 0, max = nb_iter, style = 3)
+      progress <- function(n) utils::setTxtProgressBar(pb, n)
+      opts <- list(progress = progress)
+
+      i <- j <- NULL
+      res <- suppressWarnings(foreach::foreach(i = 1:nb_iter, .combine = c,
+                              .packages = "doSNOW",
+                              .options.snow = opts,
+                              .export = ...,
+                              .verbose = FALSE,
+                              .errorhandling = "stop")%dopar%{
+                                 OF(searched_points[i, ])
+                              })
+      snow::stopCluster(cl_SOCK)
+    }
+
+    index_opt <- which.min(res)
+
+    return(list(par = searched_points[index_opt, ],
+                objective = res[index_opt]))
   }
 
