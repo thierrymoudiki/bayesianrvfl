@@ -3,7 +3,9 @@ predict_rvfl <- function(fit_obj, newx, ci = NULL, graph = FALSE)
   newx <- create_new_predictors(x = newx,
                                 nb_hidden = fit_obj$nb_hidden,
                                 nn_xm = fit_obj$nn_xm,
-                                nn_scales = fit_obj$nn_scales)$predictors
+                                nn_scales = fit_obj$nn_scales,
+                                activ = fit_obj$activ,
+                                nodes_sim = fit_obj$nodes_sim)$predictors
   xm <- as.vector(fit_obj$xm)
   scales <- as.vector(fit_obj$scales)
   scaled_newx <- my_scale(x = as.matrix(newx), xm = xm,

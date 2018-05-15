@@ -55,6 +55,7 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
                     Sigma = Sigma, lambda = lambda, ym = ym,
                     xm = x_scaled$xm, nb_hidden = nb_hidden,
                     nn_xm = list_xreg$nn_xm, nn_scales = list_xreg$nn_scales,
+                    nodes_sim = nodes_sim, activ = activ,
                     fitted_values = drop(ym +  centered_y_hat),
                     GCV = GCV,
                     compute_Sigma = compute_Sigma))
@@ -63,6 +64,7 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
                     lambda = lambda, ym = ym, xm = x_scaled$xm,
                     nb_hidden = nb_hidden, nn_xm = list_xreg$nn_xm,
                     nn_scales = list_xreg$nn_scales,
+                    nodes_sim = nodes_sim, activ = activ,
                     fitted_values = drop(ym +  centered_y_hat),
                     GCV = GCV,
                     compute_Sigma = compute_Sigma))
@@ -92,6 +94,7 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
         return(list(coef = drop(coef), scales = x_scaled$xsd, Sigma = Sigma,
                     lambda = lambda, ym = ym, xm = x_scaled$xm, nb_hidden = nb_hidden,
                     nn_xm = list_xreg$nn_xm, nn_scales = list_xreg$nn_scales,
+                    nodes_sim = nodes_sim, activ = activ,
                     fitted_values = fitted_values,
                     GCV = GCV,
                     compute_Sigma = compute_Sigma))
@@ -100,6 +103,7 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
         return(list(coef = drop(coef), scales = x_scaled$xsd,
                     lambda = lambda, ym = ym, xm = x_scaled$xm,
                     nb_hidden = nb_hidden, nn_xm = list_xreg$nn_xm, nn_scales = list_xreg$nn_scales,
+                    nodes_sim = nodes_sim, activ = activ,
                     fitted_values = drop(ym +  centered_y_hat),
                     GCV = GCV,
                     compute_Sigma = compute_Sigma))
@@ -117,21 +121,23 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
 
     coef <- foreach::foreach(i = 1:nlambda, .combine = cbind)%do%{
       Dn[[i]] <- MASS::ginv(XTX + diag(x = lambda[i],
-                            nrow = nrow(XTX)))
-      Sigma[[i]] <- diag(ncol(X)) - Dn[[i]]%*%XTX
-      Dn[[i]]%*%crossprod(X, centered_y)
+                            nrow = nrow(XTX))) # Cn^{-1}
+      Sigma[[i]] <- diag(ncol(X)) - Dn[[i]]%*%XTX # Sigma_n
+      Dn[[i]]%*%crossprod(X, centered_y) # beta_n
     }
-    colnames(coef) <- lambda
-    rownames(coef) <- colnames(x_scaled$res)
-    centered_y_hat <- X %*% coef
+      colnames(coef) <- lambda
+      rownames(coef) <- colnames(x_scaled$res)
 
     return(list(coef = coef, Dn = Dn, Sigma = Sigma,
                 scales = x_scaled$xsd, lambda = lambda,
                 ym = ym, xm = x_scaled$xm,
                 nb_hidden = nb_hidden,
+                nodes_sim = nodes_sim,
+                activ = activ,
                 nn_xm = list_xreg$nn_xm,
                 nn_scales = list_xreg$nn_scales,
-                fitted_values = drop(ym +  centered_y_hat)))
+                fitted_values = drop(ym + X %*% coef),
+                x = x, y = y))
   }
 
 }
