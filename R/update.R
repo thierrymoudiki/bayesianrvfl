@@ -1,3 +1,11 @@
+# par(mfrow=c(2, 1))
+#  plot(fit_obj$y, type = 'l')
+#  lines(fit_obj$fitted_values, type = 'l')
+#  lines(fit_obj$fitted_values, col = 'red')
+#  plot(update_params(fit_obj, newx = c(0.5, 0.5), newy = -0.5905685, method = "direct")$y, type = 'l')
+#  lines(update_params(fit_obj, newx = c(0.5, 0.5), newy = -0.5905685, method = "direct")$fitted, col = 'red')
+#  lines(update_params(fit_obj, newx = c(0.5, 0.5), newy = -0.5905685, method = "polyak")$fitted, col = 'blue')
+
 update_params <- function(fit_obj, newx, newy,
                           method = c("direct", "polyak"),
                           alpha = 0.5)
