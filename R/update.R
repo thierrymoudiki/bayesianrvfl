@@ -51,6 +51,10 @@ update_params <- function(fit_obj, newx, newy,
             # update regression coefficients and covariance with update factor
                gradients <- drop(sapply(1:length(resids),
                                         function (i) scaled_augmented_newx*resids[i]))
+
+               if (is.null(dim(gradients))) gradients <- matrix(gradients, ncol = 1,
+                                                                byrow = FALSE)
+
                fit_obj$coef[, i] <- fit_obj$coef[, i] + update_factor%*%gradients[, i]
                fit_obj$Sigma[[i]] <- fit_obj$Sigma[[i]] + update_factor%*%crossprod(scaled_augmented_newx)%*%(fit_obj$Sigma[[i]] -
                                                                                         2*diag(ncol_Sigma))
@@ -67,6 +71,10 @@ update_params <- function(fit_obj, newx, newy,
               resids <- centered_newy - scaled_augmented_newx%*%fit_obj$coef
               gradients <- drop(sapply(1:length(resids),
                                        function (i) scaled_augmented_newx*resids[i]))
+
+              if (is.null(dim(gradients))) gradients <- matrix(gradients, ncol = 1,
+                                                               byrow = FALSE)
+
               fit_obj$coef[, i] <- fit_obj$coef[, i] + update_factor*gradients[, i]
 
             # update regression coefficients and covariance with update factor
