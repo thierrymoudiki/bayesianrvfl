@@ -114,19 +114,27 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
   if (method == "ginv")
   {
     XTX <- crossprod(X)
-    Dn <- vector("list", length = nlambda)
-    names(Dn) <- lambda
-    Sigma <- vector("list", length = nlambda)
-    names(Sigma) <- lambda
 
-    coef <- foreach::foreach(i = 1:nlambda, .combine = cbind)%do%{
-      Dn[[i]] <- MASS::ginv(XTX + diag(x = lambda[i],
-                            nrow = nrow(XTX))) # Cn^{-1}
-      Sigma[[i]] <- diag(ncol(X)) - Dn[[i]]%*%XTX # Sigma_n
-      Dn[[i]]%*%crossprod(X, centered_y) # beta_n
-    }
+    if (nlambda > 1)
+    {
+      Dn <- vector("list", length = nlambda)
+      names(Dn) <- lambda
+      Sigma <- vector("list", length = nlambda)
+      names(Sigma) <- lambda
+      coef <- foreach::foreach(i = 1:nlambda, .combine = cbind)%do%{
+        Dn[[i]] <- MASS::ginv(XTX + diag(x = lambda[i],
+                                         nrow = nrow(XTX))) # Cn^{-1}
+        Sigma[[i]] <- diag(ncol(X)) - Dn[[i]]%*%XTX # Sigma_n
+        Dn[[i]]%*%crossprod(X, centered_y) # beta_n
+      }
       colnames(coef) <- lambda
       rownames(coef) <- colnames(x_scaled$res)
+    } else {
+      Dn <- MASS::ginv(XTX + diag(x = lambda,
+                                       nrow = nrow(XTX))) # Cn^{-1}
+      Sigma <- diag(ncol(X)) - Dn%*%XTX # Sigma_n
+      coef <- Dn%*%crossprod(X, centered_y) # beta_n
+    }
 
     return(list(coef = coef, Dn = Dn, Sigma = Sigma,
                 scales = x_scaled$xsd, lambda = lambda,
@@ -137,6 +145,7 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
                 nn_xm = list_xreg$nn_xm,
                 nn_scales = list_xreg$nn_scales,
                 fitted_values = drop(ym + X %*% coef),
+                compute_Sigma = compute_Sigma,
                 x = x, y = y))
   }
 

@@ -1,5 +1,8 @@
 predict_rvfl <- function(fit_obj, newx, ci = NULL, graph = FALSE)
 {
+
+  if (is.vector(newx)) newx <- t(newx)
+
   newx <- create_new_predictors(x = newx,
                                 nb_hidden = fit_obj$nb_hidden,
                                 nn_xm = fit_obj$nn_xm,

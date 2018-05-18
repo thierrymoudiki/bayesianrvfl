@@ -44,52 +44,80 @@ update_params <- function(fit_obj, newx, newy,
 
     # ----- update parameters
 
-        ncol_Sigma <- ncol(fit_obj$Sigma[[1]])
+        ncol_Sigma <- ifelse(nlambda > 1, ncol(fit_obj$Sigma[[1]]), ncol(fit_obj$Sigma))
 
         if (method == "direct")
         {
+            if (nlambda > 1)
+            {
+              for(i in 1:nlambda){
 
-          for(i in 1:nlambda){
+                # update factor
+                temp <- tcrossprod(Dn[[i]], scaled_augmented_newx) # Cn^{-1}%*%(t(mat_newx))
+                update_factor <- Dn[[i]] - tcrossprod(temp)/(1 + drop(scaled_augmented_newx%*%temp))
+                resids <- centered_newy - scaled_augmented_newx%*%fit_obj$coef
 
-            # update factor
-              temp <- tcrossprod(Dn[[i]], scaled_augmented_newx) # Cn^{-1}%*%(t(mat_newx))
-              update_factor <- Dn[[i]] - tcrossprod(temp)/(1 + drop(scaled_augmented_newx%*%temp))
-              resids <- centered_newy - scaled_augmented_newx%*%fit_obj$coef
+                # update regression coefficients and covariance with update factor
+                gradients <- drop(sapply(1:length(resids),
+                                         function (i) scaled_augmented_newx*resids[i]))
 
-            # update regression coefficients and covariance with update factor
-               gradients <- drop(sapply(1:length(resids),
-                                        function (i) scaled_augmented_newx*resids[i]))
+                if (is.null(dim(gradients))) gradients <- matrix(gradients, ncol = 1,
+                                                                 byrow = FALSE)
 
-               if (is.null(dim(gradients))) gradients <- matrix(gradients, ncol = 1,
-                                                                byrow = FALSE)
+                fit_obj$coef[, i] <- fit_obj$coef[, i] + update_factor%*%gradients[, i]
+                fit_obj$Sigma[[i]] <- fit_obj$Sigma[[i]] + update_factor%*%crossprod(scaled_augmented_newx)%*%(fit_obj$Sigma[[i]] -
+                                                                                                                 2*diag(ncol_Sigma))
+              }
+            } else {
 
-               fit_obj$coef[, i] <- fit_obj$coef[, i] + update_factor%*%gradients[, i]
-               fit_obj$Sigma[[i]] <- fit_obj$Sigma[[i]] + update_factor%*%crossprod(scaled_augmented_newx)%*%(fit_obj$Sigma[[i]] -
-                                                                                        2*diag(ncol_Sigma))
-          }
+              # update factor
+              temp <- tcrossprod(Dn, scaled_augmented_newx) # Cn^{-1}%*%(t(mat_newx))
+              update_factor <- Dn - tcrossprod(temp)/(1 + drop(scaled_augmented_newx%*%temp))
+              resids <- drop(centered_newy - scaled_augmented_newx%*%fit_obj$coef)
 
-        } else {
+              # update regression coefficients and covariance with update factor
+              gradients <- as.vector(scaled_augmented_newx*resids)
+
+              fit_obj$coef <- fit_obj$coef + update_factor%*%gradients
+              fit_obj$Sigma <- fit_obj$Sigma + update_factor%*%crossprod(scaled_augmented_newx)%*%(fit_obj$Sigma -
+                                                                                                               2*diag(ncol_Sigma))
+
+            }
+        } else { # else method == polyak
 
           # update factor
             update_factor <- n^(-alpha)
 
-          for(i in 1:nlambda){
+            if (nlambda > 1)
+            {
+              for(i in 1:nlambda){
 
-            # update regression coefficient with update factor
-              resids <- centered_newy - scaled_augmented_newx%*%fit_obj$coef
-              gradients <- drop(sapply(1:length(resids),
-                                       function (i) scaled_augmented_newx*resids[i]))
+                # update regression coefficient with update factor
+                  resids <- centered_newy - scaled_augmented_newx%*%fit_obj$coef
+                  gradients <- drop(sapply(1:length(resids),
+                                           function (i) scaled_augmented_newx*resids[i]))
 
-              if (is.null(dim(gradients))) gradients <- matrix(gradients, ncol = 1,
-                                                               byrow = FALSE)
+                  if (is.null(dim(gradients))) gradients <- matrix(gradients, ncol = 1,
+                                                                   byrow = FALSE)
 
-              fit_obj$coef[, i] <- fit_obj$coef[, i] + update_factor*gradients[, i]
+                  fit_obj$coef[, i] <- fit_obj$coef[, i] + update_factor*gradients[, i]
 
-            # update regression coefficients and covariance with update factor
-              fit_obj$Sigma[[i]] <- fit_obj$Sigma[[i]] + update_factor*crossprod(scaled_augmented_newx)%*%(fit_obj$Sigma[[i]] -
-                                                                                                             2*diag(ncol_Sigma))
-          }
+                # update regression coefficients and covariance with update factor
+                  fit_obj$Sigma[[i]] <- fit_obj$Sigma[[i]] + update_factor*crossprod(scaled_augmented_newx)%*%(fit_obj$Sigma[[i]] -
+                                                                                                                 2*diag(ncol_Sigma))
+              }
+            } else {
+              # update factor
+              temp <- tcrossprod(Dn, scaled_augmented_newx) # Cn^{-1}%*%(t(mat_newx))
+              resids <- drop(centered_newy - scaled_augmented_newx%*%fit_obj$coef)
 
+              # update regression coefficients and covariance with update factor
+              gradients <- as.vector(scaled_augmented_newx*resids)
+
+              fit_obj$coef <- drop(fit_obj$coef) + update_factor*gradients
+              fit_obj$Sigma <- fit_obj$Sigma + update_factor*crossprod(scaled_augmented_newx)%*%(fit_obj$Sigma -
+                                                                                                     2*diag(ncol_Sigma))
+            }
         }
 
           # update response and covariates with new observations
@@ -122,14 +150,31 @@ update_params <- function(fit_obj, newx, newy,
             if (method == "direct")
             {
               XTX <- crossprod(X)
-              Dn <- vector("list", length = nlambda)
-              names(Dn) <- fit_obj$lambda
-              Dn <- lapply(1:nlambda, function (i)
-                MASS::ginv(XTX + diag(x = fit_obj$lambda[i],
-                                               nrow = ncol(XTX))))
-              fit_obj$Dn <- Dn
+              if (nlambda > 1)
+              {
+                Dn <- vector("list", length = nlambda)
+                names(Dn) <- fit_obj$lambda
+                Dn <- lapply(1:nlambda, function (i)
+                  MASS::ginv(XTX + diag(x = fit_obj$lambda[i],
+                                        nrow = ncol(XTX))))
+                fit_obj$Dn <- Dn
+              } else {
+                Dn <- MASS::ginv(XTX + diag(x = fit_obj$lambda,
+                                        nrow = ncol(XTX)))
+                fit_obj$Dn <- Dn
+              }
             }
+
+  # serves for variance prediction
+  fit_obj$compute_Sigma <- TRUE
 
   # return a new fit_obj with updated data.
   return (fit_obj)
 }
+
+
+
+
+# function for updating with multiple newx arriving
+# - fit_obj should specify the method: fit_obj$method == 'direct' or 'pol' (for the next 'newx')
+# - fit_obj should specify the alpha: for fit_obj$method == 'pol' (for the next 'newx')
