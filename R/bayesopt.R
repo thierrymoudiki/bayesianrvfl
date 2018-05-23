@@ -41,6 +41,7 @@
   # $objective
   # [1] -3.322368
 
+  # Hartmann 6
   hart6sc <- function(xx)
   {
     ##########################################################################
@@ -95,7 +96,14 @@
     return(y)
   }
 
+  # Alpine 01
+  alpine01 <- function(x)
+  {
+    sum(abs(x * sin(x) + 0.1 * x))
+  }
+
   min_loglik <- function(x, y,
+                         surrogate_model = c("rvfl", "matern52"),
                          nodes_sim = c("sobol", "halton", "unif"),
                          activ = c("relu", "sigmoid", "tanh",
                                    "leakyrelu","elu", "linear"))
@@ -104,19 +112,38 @@
     stopifnot(n == length(y))
     nodes_sim <- match.arg(nodes_sim)
     activ <- match.arg(activ)
+    surrogate_model <- match.arg(surrogate_model)
 
-    OF <- function(xx)
+    if (surrogate_model == "rvfl")
     {
-      x_augmented <- create_new_predictors(x = x,
-                                           nb_hidden = floor(xx[1]),
-                                           nodes_sim = nodes_sim,
-                                           activ = activ)$predictors
-      Sigma <- tcrossprod(x_augmented, x_augmented) + xx[2]*diag(n)
-      res <- try(0.5*(n*log(2*pi) + log(det(Sigma)) +
-                        drop(crossprod(y, MASS::ginv(Sigma))%*%y)),
-                 silent = TRUE)
+      OF <- function(xx)
+      {
+        x_augmented <- create_new_predictors(x = x,
+                                             nb_hidden = floor(xx[1]),
+                                             nodes_sim = nodes_sim,
+                                             activ = activ)$predictors
+        Sigma <- tcrossprod(x_augmented, x_augmented) + xx[2]*diag(n)
+        res <- try(0.5*(n*log(2*pi) + log(det(Sigma)) +
+                          drop(crossprod(y, MASS::ginv(Sigma))%*%y)),
+                   silent = TRUE)
 
-      ifelse(class(res) == "try-error", -1e06, res)
+        ifelse(class(res) == "try-error", -1e06, res)
+      }
+    }
+
+    if (surrogate_model == "matern52")
+    {
+      OF <- function(xx)
+      {
+        Sigma <- matern52_kxx_cpp(x = x,
+                                  sigma = xx[1],
+                                  l = xx[2]) + xx[3]*diag(n)
+        res <- try(0.5*(n*log(2*pi) + log(det(Sigma)) +
+                          drop(crossprod(y, MASS::ginv(Sigma))%*%y)),
+                   silent = TRUE)
+
+        ifelse(class(res) == "try-error", -1e06, res)
+      }
     }
 
      return(msnlminb(objective = OF, nb_iter = 50,
@@ -142,7 +169,7 @@
                              nb_init = 10, nb_iter = 25,
                              method = c("standard", "direct_online",
                                         "polyak_online"), # '*_online' available for rvfl only
-                             surrogate_model = c("rvfl", "gp", "rf"),
+                             surrogate_model = c("rvfl", "matern52", "rf"),
                              optim_surr = c("GCV", "loglik"),
                              activation_function = c("relu", "tanh"),
                              type_optim = c("nlminb", "DEoptim",
@@ -183,14 +210,27 @@
 
     if (optim_surr == "loglik")
     {
-      best_params <- bayesianrvfl::min_loglik(x = parameters, y = scores,
-                                              nodes_sim = "sobol",
-                                              activ = activation_function)
-      best_lam <- best_params$par[2]
-      best_nb_hidden <- floor(best_params$par[1])
+      if (surrogate_model == "rvfl")
+      {
+        best_params <- bayesianrvfl::min_loglik(x = parameters, y = scores,
+                                                nodes_sim = "sobol",
+                                                activ = activation_function)
+        best_lam <- best_params$par[2]
+        best_nb_hidden <- floor(best_params$par[1])
+      }
+
+      if (surrogate_model == "matern52")
+      {
+        best_params <- bayesianrvfl::min_loglik(x = parameters, y = scores,
+                                                surrogate_model = "matern52")
+        best_sigma <- best_params$par[1]
+        best_l <- best_params$par[2]
+        best_lam <- best_params$par[3]
+      }
     }
 
-
+    if (verbose == TRUE)
+    {
       if (optim_surr == "GCV") cat("----- GCV parameters", "\n")
       if (optim_surr == "loglik") cat("----- loglik parameters", "\n")
       cat("\n")
@@ -200,127 +240,136 @@
       cat("selected number of hidden nodes", "\n")
       print(best_nb_hidden)
       cat("\n")
-
+    }
 
 
     # method == "standard" ----------------------------------------------------
 
     if (method == "standard")
     {
-      find_next_param_by_ei <- function(x)
+      if (surrogate_model == "rvfl")
       {
-        x <- matrix(x, nrow = 1)
-        pred_obj <- bayesianrvfl::predict_rvfl(bayesianrvfl::fit_rvfl(x = parameters, y = scores,
-                                                                      activ = activation_function,
-                                                                      nb_hidden = best_nb_hidden,
-                                                                      lambda = best_lam,
-                                                                      compute_Sigma = TRUE),
-                                               newx = x)
-        mu_hat <- pred_obj$mean
-        sigma_hat <- pred_obj$sd
-        gamma_hat <- (min(scores) - mu_hat)/sigma_hat
-        res <- -sigma_hat*(gamma_hat*pnorm(gamma_hat) + dnorm(gamma_hat))
-        return (ifelse(is.na(res), 100, res))
-      }
-      find_next_param_by_ei <- compiler::cmpfun(find_next_param_by_ei)
+        find_next_param_by_ei <- function(x)
+        {
+          x <- matrix(x, nrow = 1)
+          pred_obj <- bayesianrvfl::predict_rvfl(bayesianrvfl::fit_rvfl(x = parameters, y = scores,
+                                                                        activ = activation_function,
+                                                                        nb_hidden = best_nb_hidden,
+                                                                        lambda = best_lam,
+                                                                        compute_Sigma = TRUE),
+                                                 newx = x)
+          mu_hat <- pred_obj$mean
+          sigma_hat <- pred_obj$sd
+          gamma_hat <- (min(scores) - mu_hat)/sigma_hat
+          res <- -sigma_hat*(gamma_hat*pnorm(gamma_hat) + dnorm(gamma_hat))
+          return (ifelse(is.na(res), 100, res))
+        }
+        find_next_param_by_ei <- compiler::cmpfun(find_next_param_by_ei)
 
-      find_next_param_by_ucb <- function(x)
+        find_next_param_by_ucb <- function(x)
+        {
+          x <- matrix(x, nrow = 1)
+          pred_obj <- bayesianrvfl::predict_rvfl(bayesianrvfl::fit_rvfl(x = parameters, y = scores,
+                                                                        activ = activation_function,
+                                                                        nb_hidden = best_nb_hidden,
+                                                                        lambda = best_lam,
+                                                                        compute_Sigma = TRUE),
+                                                 newx = x)
+          return (-(pred_obj$mean - kappa*pred_obj$sd))
+        }
+        find_next_param_by_ucb <- compiler::cmpfun(find_next_param_by_ucb)
+
+        find_next_param <- switch(type_acq,
+                                  "ei" = find_next_param_by_ei,
+                                  "ucb" = find_next_param_by_ucb)
+
+        if (verbose == FALSE && show_progress == TRUE)
+        {
+          pb <- txtProgressBar(min = 1, max = nb_iter, style = 3)
+        }
+
+        for (iter in 1:nb_iter)
+        {
+          if (verbose == TRUE)
+          {
+            cat("\n")
+            cat("----- iteration #", iter, "\n")
+            cat("\n")
+          }
+
+          if (type_optim == "nlminb")
+          {
+            set.seed(iter + 1)
+            next_param <- suppressWarnings(stats::nlminb(start = lower + (upper-lower)*runif(length(lower)),
+                                                         objective = find_next_param,
+                                                         lower = lower, upper = upper)$par)
+          }
+
+          if (type_optim == "msnlminb")
+          {
+            next_param <- suppressWarnings(bayesianrvfl::msnlminb(objective = find_next_param,
+                                                                  lower = lower,
+                                                                  upper = upper,
+                                                                  nb_iter = 10)$par)
+          }
+
+          if (type_optim == "DEoptim")
+          {
+            next_param <- suppressWarnings(DEoptim::DEoptim(fn = find_next_param,
+                                                            lower = lower,
+                                                            upper = upper,
+                                                            control = DEoptim::DEoptim.control(trace = FALSE,
+                                                                                               parallelType = 0, itermax = 25))$optim$bestmem)
+          }
+
+          if (param_is_found(parameters, next_param) == TRUE)
+          {
+            nb_is_found <- nb_is_found + 1
+            set.seed(iter + 1)
+            next_param <- lower + (upper - lower)*runif(dim_xx)
+          }
+
+          if (verbose == TRUE)
+          {
+            cat("next_param", "\n")
+            print(next_param)
+            cat("\n")
+          }
+
+          current_score <- OF(next_param)
+          if (verbose == TRUE)
+          {
+            cat("score", "\n")
+            print(current_score)
+            cat("\n")
+          }
+
+          parameters <- rbind(parameters, next_param)
+          scores <- c(scores, current_score)
+
+
+          if (verbose == TRUE)
+          {
+            index_min <- which.min(scores)
+            best_param <- parameters[index_min,]
+            cat("current best param", "\n")
+            print(best_param)
+            cat("\n")
+            cat("current best score", "\n")
+            print(scores[index_min])
+            cat("\n")
+          }
+
+          if (verbose == FALSE && show_progress == TRUE) setTxtProgressBar(pb, iter)
+        }
+        if (verbose == FALSE && show_progress == TRUE) close(pb)
+
+        }
+
+      if (surrogate_model == "matern52")
       {
-        x <- matrix(x, nrow = 1)
-        pred_obj <- bayesianrvfl::predict_rvfl(bayesianrvfl::fit_rvfl(x = parameters, y = scores,
-                                                                      activ = activation_function,
-                                                                      nb_hidden = best_nb_hidden,
-                                                                      lambda = best_lam,
-                                                                      compute_Sigma = TRUE),
-                                               newx = x)
-        return (-(pred_obj$mean - kappa*pred_obj$sd))
+
       }
-      find_next_param_by_ucb <- compiler::cmpfun(find_next_param_by_ucb)
-
-      find_next_param <- switch(type_acq,
-                                "ei" = find_next_param_by_ei,
-                                "ucb" = find_next_param_by_ucb)
-
-      if (verbose == FALSE && show_progress == TRUE)
-      {
-        pb <- txtProgressBar(min = 1, max = nb_iter, style = 3)
-      }
-
-      for (iter in 1:nb_iter)
-      {
-        if (verbose == TRUE)
-        {
-          cat("\n")
-          cat("----- iteration #", iter, "\n")
-          cat("\n")
-        }
-
-        if (type_optim == "nlminb")
-        {
-          set.seed(iter + 1)
-          next_param <- suppressWarnings(stats::nlminb(start = lower + (upper-lower)*runif(length(lower)),
-                                                       objective = find_next_param,
-                                                       lower = lower, upper = upper)$par)
-        }
-
-        if (type_optim == "msnlminb")
-        {
-          next_param <- suppressWarnings(bayesianrvfl::msnlminb(objective = find_next_param,
-                                                                lower = lower,
-                                                                upper = upper,
-                                                                nb_iter = 10)$par)
-        }
-
-        if (type_optim == "DEoptim")
-        {
-          next_param <- suppressWarnings(DEoptim::DEoptim(fn = find_next_param,
-                                                          lower = lower,
-                                                          upper = upper,
-                                                          control = DEoptim::DEoptim.control(trace = FALSE,
-                                                                                             parallelType = 0, itermax = 25))$optim$bestmem)
-        }
-
-        if (param_is_found(parameters, next_param) == TRUE)
-        {
-          nb_is_found <- nb_is_found + 1
-          set.seed(iter + 1)
-          next_param <- lower + (upper - lower)*runif(dim_xx)
-        }
-
-        if (verbose == TRUE)
-        {
-          cat("next_param", "\n")
-          print(next_param)
-          cat("\n")
-        }
-
-        current_score <- OF(next_param)
-        if (verbose == TRUE)
-        {
-          cat("score", "\n")
-          print(current_score)
-          cat("\n")
-        }
-
-        parameters <- rbind(parameters, next_param)
-        scores <- c(scores, current_score)
-
-
-        if (verbose == TRUE)
-        {
-          index_min <- which.min(scores)
-          best_param <- parameters[index_min,]
-          cat("current best param", "\n")
-          print(best_param)
-          cat("\n")
-          cat("current best score", "\n")
-          print(scores[index_min])
-          cat("\n")
-        }
-
-        if (verbose == FALSE && show_progress == TRUE) setTxtProgressBar(pb, iter)
-      }
-      if (verbose == FALSE && show_progress == TRUE) close(pb)
     }
 
     # method == "direct_online" ----------------------------------------------------

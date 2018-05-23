@@ -5,6 +5,44 @@
 
 using namespace Rcpp;
 
+// l2_norm
+double l2_norm(NumericVector x);
+RcppExport SEXP _bayesianrvfl_l2_norm(SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(l2_norm(x));
+    return rcpp_result_gen;
+END_RCPP
+}
+// matern52_kxx_cpp
+NumericMatrix matern52_kxx_cpp(NumericMatrix x, double sigma, double l);
+RcppExport SEXP _bayesianrvfl_matern52_kxx_cpp(SEXP xSEXP, SEXP sigmaSEXP, SEXP lSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type sigma(sigmaSEXP);
+    Rcpp::traits::input_parameter< double >::type l(lSEXP);
+    rcpp_result_gen = Rcpp::wrap(matern52_kxx_cpp(x, sigma, l));
+    return rcpp_result_gen;
+END_RCPP
+}
+// matern52_kxy_cpp
+NumericVector matern52_kxy_cpp(NumericMatrix x, NumericVector y, double sigma, double l);
+RcppExport SEXP _bayesianrvfl_matern52_kxy_cpp(SEXP xSEXP, SEXP ySEXP, SEXP sigmaSEXP, SEXP lSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< double >::type sigma(sigmaSEXP);
+    Rcpp::traits::input_parameter< double >::type l(lSEXP);
+    rcpp_result_gen = Rcpp::wrap(matern52_kxy_cpp(x, y, sigma, l));
+    return rcpp_result_gen;
+END_RCPP
+}
 // cbind_cpp
 NumericMatrix cbind_cpp(NumericMatrix x, NumericMatrix y);
 RcppExport SEXP _bayesianrvfl_cbind_cpp(SEXP xSEXP, SEXP ySEXP) {
@@ -19,6 +57,9 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_bayesianrvfl_l2_norm", (DL_FUNC) &_bayesianrvfl_l2_norm, 1},
+    {"_bayesianrvfl_matern52_kxx_cpp", (DL_FUNC) &_bayesianrvfl_matern52_kxx_cpp, 3},
+    {"_bayesianrvfl_matern52_kxy_cpp", (DL_FUNC) &_bayesianrvfl_matern52_kxy_cpp, 4},
     {"_bayesianrvfl_cbind_cpp", (DL_FUNC) &_bayesianrvfl_cbind_cpp, 2},
     {NULL, NULL, 0}
 };

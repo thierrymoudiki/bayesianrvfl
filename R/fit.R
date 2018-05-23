@@ -151,6 +151,57 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
 
 }
 
+# Fitting Matérn 5/2 model
+fit_gp <- function(x, y,
+                   sigma = 2, l = 0.1, lambda_krls = 0.1,
+                   inv_method = c("chol", "ginv"),
+                   compute_Sigma = FALSE)
+{
+  if (!is.vector(y)) stop("'y' must be a vector") # otherwise y - ym is not working
+  x <- as.matrix(x)
+  y <- as.vector(y)
+  inv_method <- match.arg(inv_method)
 
+  ym <- mean(y)
+  centered_y <- y - ym
+
+  x_scaled <- my_scale(x)
+  X <- x_scaled$res
+  xm <- x_scaled$xm
+  xsd <- x_scaled$xsd
+
+  K <- bayesianrvfl::matern52_kxx_cpp(x = X,
+                        sigma = sigma,
+                        l = l)
+  mat_coefs <- switch(
+      inv_method,
+      "chol" = chol2inv(chol(K + lambda_krls * diag(nrow(K)))) %*% centered_y,
+      "ginv" = my_ginv(K + lambda_krls * diag(nrow(K))) %*% centered_y
+    )
+
+    lsfit <- drop(crossprod(K, mat_coefs))
+    fitted_values <- lsfit  + rep(ym, length(lsfit))
+    resid <- y - fitted_values
+
+  return(
+    list(
+      y = y,
+      sigma = sigma,
+      l = l,
+      K = K,
+      lambda_krls = lambda_krls,
+      inv_method = inv_method,
+      mat_coefs = mat_coefs,
+      fitted_values = fitted_values,
+      ym = ym,
+      xm = xm,
+      xsd = xsd,
+      scaled_x = X,
+      resid = resid,
+      compute_Sigma = compute_Sigma
+    )
+  )
+
+}
 
 

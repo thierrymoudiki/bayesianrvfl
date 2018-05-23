@@ -51,3 +51,48 @@ predict_rvfl <- function(fit_obj, newx, ci = NULL, graph = FALSE)
     }
   }
 }
+
+predict_matern52 <- function(fit_obj, newx, ci = NULL)
+{
+   if (is.vector(newx)) newx <- t(newx)
+
+    y <- fit_obj$y
+    xm <- fit_obj$xm
+    ym <- fit_obj$ym
+    xsd <- fit_obj$xsd
+    X <- fit_obj$scaled_x
+    sigma <- fit_obj$sigma
+    l <- fit_obj$l
+    lambda_krls <- fit_obj$lambda_krls
+    K <- fit_obj$K
+    mat_coefs <- fit_obj$mat_coefs
+    compute_Sigma <- fit_obj$compute_Sigma
+    scaled_newx <- my_scale(newx, xm = xm, xsd = xsd)
+    inv_method <- fit_obj$inv_method
+    n_newx <- nrow(newx)
+
+    if (is.vector(scaled_newx)){
+      K_star <- matern52_kxy_cpp(x = X, y = scaled_newx,
+                                 sigma = sigma, l = l)
+    } else {
+      K_star <- sapply(1:n_newx, function (i) matern52_kxy_cpp(x = X, y = scaled_newx[i, ],
+                                 sigma = sigma, l = l))
+    }
+
+    preds <- drop(crossprod(K_star, mat_coefs)) + ym
+
+    if (compute_Sigma == TRUE)
+    {
+      K_star2 <- matern52_kxx_cpp(x = scaled_newx,
+                                  sigma = sigma, l = l)
+      shrinked_K <- switch(
+        inv_method,
+        "chol" = chol2inv(chol(K + lambda_krls * diag(nrow(K)))),
+        "ginv" = my_ginv(K + lambda_krls * diag(nrow(K))))
+      Sigma <- sqrt(diag(K_star2 - crossprod(K_star, shrinked_K)%*%K_star))
+      return (list(mean = preds,
+                   sd = Sigma))
+    } else {
+      return(preds)
+    }
+}
