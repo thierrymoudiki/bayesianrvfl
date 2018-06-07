@@ -129,6 +129,10 @@
 
         ifelse(class(res) == "try-error", -1e06, res)
       }
+
+      return(msnlminb(objective = OF, nb_iter = 50,
+                      lower =  c(1, 0.01),
+                      upper = c(100, 1e04)))
     }
 
     if (surrogate_model == "matern52")
@@ -144,11 +148,11 @@
 
         ifelse(class(res) == "try-error", -1e06, res)
       }
-    }
 
-     return(msnlminb(objective = OF, nb_iter = 50,
-                     lower =  c(1, 0.01),
-                     upper = c(100, 1e04)))
+      return(msnlminb(objective = OF, nb_iter = 50,
+                      lower =  c(1e-04, 1e-04, 1e-04),
+                      upper = c(1e05, 1e05, 1e04)))
+    }
 
     # return(DEoptim::DEoptim(fn = OF,
     #                         lower = c(1, 0.01),
@@ -188,6 +192,8 @@
     method <- match.arg(method)
     activation_function <- match.arg(activation_function)
     optim_surr <- match.arg(optim_surr)
+    surrogate_model <- match.arg(surrogate_model)
+    if (surrogate_model == "matern52") optim_surr <- "loglik" # to me MODIFIED
 
     rep_1_nb_init <- rep(1, nb_init)
     lower_mat_init <- tcrossprod(rep_1_nb_init, lower)
@@ -217,6 +223,19 @@
                                                 activ = activation_function)
         best_lam <- best_params$par[2]
         best_nb_hidden <- floor(best_params$par[1])
+
+        if (verbose == TRUE)
+        {
+          if (optim_surr == "GCV") cat("----- GCV parameters", "\n")
+          if (optim_surr == "loglik") cat("----- loglik parameters", "\n")
+          cat("\n")
+          cat("selected regularization parameter", "\n")
+          print(best_lam)
+          cat("\n")
+          cat("selected number of hidden nodes", "\n")
+          print(best_nb_hidden)
+          cat("\n")
+        }
       }
 
       if (surrogate_model == "matern52")
@@ -226,22 +245,23 @@
         best_sigma <- best_params$par[1]
         best_l <- best_params$par[2]
         best_lam <- best_params$par[3]
+
+        if (verbose == TRUE)
+        {
+          if (optim_surr == "loglik") cat("----- loglik parameters", "\n")
+          cat("\n")
+          cat("selected sigma", "\n")
+          print(best_sigma)
+          cat("\n")
+          cat("selected lengthscale", "\n")
+          print(best_l)
+          cat("\n")
+          cat("selected regularization parameter", "\n")
+          print(best_lam)
+          cat("\n")
+        }
       }
     }
-
-    if (verbose == TRUE)
-    {
-      if (optim_surr == "GCV") cat("----- GCV parameters", "\n")
-      if (optim_surr == "loglik") cat("----- loglik parameters", "\n")
-      cat("\n")
-      cat("selected regularization parameter", "\n")
-      print(best_lam)
-      cat("\n")
-      cat("selected number of hidden nodes", "\n")
-      print(best_nb_hidden)
-      cat("\n")
-    }
-
 
     # method == "standard" ----------------------------------------------------
 
@@ -364,18 +384,136 @@
         }
         if (verbose == FALSE && show_progress == TRUE) close(pb)
 
-        }
+        } # end: if (surrogate_model == "rvfl")
 
       if (surrogate_model == "matern52")
       {
+        find_next_param_by_ei <- function(x)
+        {
+          x <- matrix(x, nrow = 1)
+          pred_obj <- bayesianrvfl::predict_matern52(bayesianrvfl::fit_matern52(x = parameters,
+                                                                                y = scores,
+                                                                                sigma = best_sigma,
+                                                                                l = best_l,
+                                                                                lambda_krls = best_lam,
+                                                                                compute_Sigma = TRUE),
+                                                 newx = x)
+          mu_hat <- pred_obj$mean
+          sigma_hat <- pred_obj$sd
+          gamma_hat <- (min(scores) - mu_hat)/sigma_hat
+          res <- -sigma_hat*(gamma_hat*pnorm(gamma_hat) + dnorm(gamma_hat))
+          return (ifelse(is.na(res), 100, res))
+        }
+        find_next_param_by_ei <- compiler::cmpfun(find_next_param_by_ei)
 
-      }
+        find_next_param_by_ucb <- function(x)
+        {
+          x <- matrix(x, nrow = 1)
+          pred_obj <- bayesianrvfl::predict_matern52(bayesianrvfl::fit_matern52(x = parameters, y = scores,
+                                                                                sigma = best_sigma,
+                                                                                l = best_l,
+                                                                                lambda_krls = best_lam,
+                                                                        compute_Sigma = TRUE),
+                                                 newx = x)
+          return (-(pred_obj$mean - kappa*pred_obj$sd))
+        }
+        find_next_param_by_ucb <- compiler::cmpfun(find_next_param_by_ucb)
+
+        find_next_param <- switch(type_acq,
+                                  "ei" = find_next_param_by_ei,
+                                  "ucb" = find_next_param_by_ucb)
+
+        if (verbose == FALSE && show_progress == TRUE)
+        {
+          pb <- txtProgressBar(min = 1, max = nb_iter, style = 3)
+        }
+
+        for (iter in 1:nb_iter)
+        {
+          if (verbose == TRUE)
+          {
+            cat("\n")
+            cat("----- iteration #", iter, "\n")
+            cat("\n")
+          }
+
+          if (type_optim == "nlminb")
+          {
+            set.seed(iter + 1)
+            next_param <- suppressWarnings(stats::nlminb(start = lower + (upper-lower)*runif(length(lower)),
+                                                         objective = find_next_param,
+                                                         lower = lower, upper = upper)$par)
+          }
+
+          if (type_optim == "msnlminb")
+          {
+            next_param <- suppressWarnings(bayesianrvfl::msnlminb(objective = find_next_param,
+                                                                  lower = lower,
+                                                                  upper = upper,
+                                                                  nb_iter = 10)$par)
+          }
+
+          if (type_optim == "DEoptim")
+          {
+            next_param <- suppressWarnings(DEoptim::DEoptim(fn = find_next_param,
+                                                            lower = lower,
+                                                            upper = upper,
+                                                            control = DEoptim::DEoptim.control(trace = FALSE,
+                                                                                               parallelType = 0, itermax = 25))$optim$bestmem)
+          }
+
+          if (param_is_found(parameters, next_param) == TRUE)
+          {
+            nb_is_found <- nb_is_found + 1
+            set.seed(iter + 1)
+            next_param <- lower + (upper - lower)*runif(dim_xx)
+          }
+
+          if (verbose == TRUE)
+          {
+            cat("next_param", "\n")
+            print(next_param)
+            cat("\n")
+          }
+
+          current_score <- OF(next_param)
+          if (verbose == TRUE)
+          {
+            cat("score", "\n")
+            print(current_score)
+            cat("\n")
+          }
+
+          parameters <- rbind(parameters, next_param)
+          scores <- c(scores, current_score)
+
+
+          if (verbose == TRUE)
+          {
+            index_min <- which.min(scores)
+            best_param <- parameters[index_min,]
+            cat("current best param", "\n")
+            print(best_param)
+            cat("\n")
+            cat("current best score", "\n")
+            print(scores[index_min])
+            cat("\n")
+          }
+
+          if (verbose == FALSE && show_progress == TRUE) setTxtProgressBar(pb, iter)
+        }
+        if (verbose == FALSE && show_progress == TRUE) close(pb)
+
+      } # end: if (surrogate_model == "matern52")
+
     }
 
     # method == "direct_online" ----------------------------------------------------
 
     if (method == "direct_online")
     {
+      if (surrogate_model == "rvfl")
+      {
 
         fit_obj <- bayesianrvfl::fit_rvfl(x = parameters, y = scores,
                                           nb_hidden = best_nb_hidden,
@@ -384,250 +522,260 @@
                                           method = "ginv",
                                           compute_Sigma = TRUE)
 
-      find_next_param_by_ei <- function(x)
-      {
-        x <- matrix(x, nrow = 1)
-        pred_obj <- bayesianrvfl::predict_rvfl(fit_obj,
-                                               newx = x)
-        mu_hat <- pred_obj$mean
-        sigma_hat <- pred_obj$sd
-        gamma_hat <- (min(scores) - mu_hat)/sigma_hat
-        res <- -sigma_hat*(gamma_hat*pnorm(gamma_hat) + dnorm(gamma_hat))
-        return (ifelse(is.na(res), 100, res))
+        find_next_param_by_ei <- function(x)
+        {
+          x <- matrix(x, nrow = 1)
+          pred_obj <- bayesianrvfl::predict_rvfl(fit_obj,
+                                                 newx = x)
+          mu_hat <- pred_obj$mean
+          sigma_hat <- pred_obj$sd
+          gamma_hat <- (min(scores) - mu_hat)/sigma_hat
+          res <- -sigma_hat*(gamma_hat*pnorm(gamma_hat) + dnorm(gamma_hat))
+          return (ifelse(is.na(res), 100, res))
+        }
+        find_next_param_by_ei <- compiler::cmpfun(find_next_param_by_ei)
+
+        find_next_param_by_ucb <- function(x)
+        {
+          x <- matrix(x, nrow = 1)
+          pred_obj <- bayesianrvfl::predict_rvfl(fit_obj,
+                                                 newx = x)
+          return (-(pred_obj$mean - kappa*pred_obj$sd))
+        }
+        find_next_param_by_ucb <- compiler::cmpfun(find_next_param_by_ucb)
+
+        find_next_param <- switch(type_acq,
+                                  "ei" = find_next_param_by_ei,
+                                  "ucb" = find_next_param_by_ucb)
+
+        if (verbose == FALSE && show_progress == TRUE)
+        {
+          pb <- txtProgressBar(min = 1, max = nb_iter, style = 3)
+        }
+
+        for (iter in 1:nb_iter)
+        {
+          if (verbose == TRUE)
+          {
+            cat("\n")
+            cat("----- iteration #", iter, "\n")
+            cat("\n")
+          }
+
+          if (type_optim == "nlminb")
+          {
+            set.seed(iter + 1)
+            next_param <- suppressWarnings(stats::nlminb(start = lower + (upper-lower)*runif(length(lower)),
+                                                         objective = find_next_param,
+                                                         lower = lower, upper = upper)$par)
+          }
+
+          if (type_optim == "msnlminb")
+          {
+            next_param <- suppressWarnings(bayesianrvfl::msnlminb(objective = find_next_param,
+                                                                  lower = lower,
+                                                                  upper = upper,
+                                                                  nb_iter = 10)$par)
+          }
+
+          if (type_optim == "DEoptim")
+          {
+            next_param <- suppressWarnings(DEoptim::DEoptim(fn = find_next_param,
+                                                            lower = lower,
+                                                            upper = upper,
+                                                            control = DEoptim::DEoptim.control(trace = FALSE,
+                                                                                               parallelType = 0, itermax = 25))$optim$bestmem)
+          }
+
+          if (param_is_found(parameters, next_param) == TRUE)
+          {
+            nb_is_found <- nb_is_found + 1
+            set.seed(iter + 1)
+            next_param <- lower + (upper - lower)*runif(dim_xx)
+          }
+
+          if (verbose == TRUE)
+          {
+            cat("next_param", "\n")
+            print(next_param)
+            cat("\n")
+          }
+
+          current_score <- OF(next_param)
+          if (verbose == TRUE)
+          {
+            cat("score", "\n")
+            print(current_score)
+            cat("\n")
+          }
+
+          parameters <- rbind(parameters, next_param)
+          scores <- c(scores, current_score)
+          fit_obj <- bayesianrvfl::update_params(fit_obj = fit_obj,
+                                                 newx = next_param, newy = current_score,
+                                                 method = "direct")
+
+          if (verbose == TRUE)
+          {
+            index_min <- which.min(scores)
+            best_param <- parameters[index_min,]
+            cat("current best param", "\n")
+            print(best_param)
+            cat("\n")
+            cat("current best score", "\n")
+            print(scores[index_min])
+            cat("\n")
+          }
+
+          if (verbose == FALSE && show_progress == TRUE) setTxtProgressBar(pb, iter)
+        }
+        if (verbose == FALSE && show_progress == TRUE) close(pb)
       }
-      find_next_param_by_ei <- compiler::cmpfun(find_next_param_by_ei)
 
-      find_next_param_by_ucb <- function(x)
-      {
-        x <- matrix(x, nrow = 1)
-        pred_obj <- bayesianrvfl::predict_rvfl(fit_obj,
-                                               newx = x)
-        return (-(pred_obj$mean - kappa*pred_obj$sd))
-      }
-      find_next_param_by_ucb <- compiler::cmpfun(find_next_param_by_ucb)
-
-      find_next_param <- switch(type_acq,
-                                "ei" = find_next_param_by_ei,
-                                "ucb" = find_next_param_by_ucb)
-
-      if (verbose == FALSE && show_progress == TRUE)
-      {
-        pb <- txtProgressBar(min = 1, max = nb_iter, style = 3)
-      }
-
-      for (iter in 1:nb_iter)
-      {
-        if (verbose == TRUE)
-        {
-          cat("\n")
-          cat("----- iteration #", iter, "\n")
-          cat("\n")
-        }
-
-        if (type_optim == "nlminb")
-        {
-          set.seed(iter + 1)
-          next_param <- suppressWarnings(stats::nlminb(start = lower + (upper-lower)*runif(length(lower)),
-                                                       objective = find_next_param,
-                                                       lower = lower, upper = upper)$par)
-        }
-
-        if (type_optim == "msnlminb")
-        {
-          next_param <- suppressWarnings(bayesianrvfl::msnlminb(objective = find_next_param,
-                                                                lower = lower,
-                                                                upper = upper,
-                                                                nb_iter = 10)$par)
-        }
-
-        if (type_optim == "DEoptim")
-        {
-          next_param <- suppressWarnings(DEoptim::DEoptim(fn = find_next_param,
-                                                          lower = lower,
-                                                          upper = upper,
-                                                          control = DEoptim::DEoptim.control(trace = FALSE,
-                                                                                             parallelType = 0, itermax = 25))$optim$bestmem)
-        }
-
-        if (param_is_found(parameters, next_param) == TRUE)
-        {
-          nb_is_found <- nb_is_found + 1
-          set.seed(iter + 1)
-          next_param <- lower + (upper - lower)*runif(dim_xx)
-        }
-
-        if (verbose == TRUE)
-        {
-          cat("next_param", "\n")
-          print(next_param)
-          cat("\n")
-        }
-
-        current_score <- OF(next_param)
-        if (verbose == TRUE)
-        {
-          cat("score", "\n")
-          print(current_score)
-          cat("\n")
-        }
-
-        parameters <- rbind(parameters, next_param)
-        scores <- c(scores, current_score)
-        fit_obj <- bayesianrvfl::update_params(fit_obj = fit_obj,
-                                               newx = next_param, newy = current_score,
-                                               method = "direct")
-
-        if (verbose == TRUE)
-        {
-          index_min <- which.min(scores)
-          best_param <- parameters[index_min,]
-          cat("current best param", "\n")
-          print(best_param)
-          cat("\n")
-          cat("current best score", "\n")
-          print(scores[index_min])
-          cat("\n")
-        }
-
-        if (verbose == FALSE && show_progress == TRUE) setTxtProgressBar(pb, iter)
-      }
-      if (verbose == FALSE && show_progress == TRUE) close(pb)
+      if (surrogate_model == "matern52")
+      {stop("not implemented")}
     }
 
     # method == "polyak_online" ----------------------------------------------------
 
     if (method == "polyak_online")
     {
-
-      fit_obj <- bayesianrvfl::fit_rvfl(x = parameters, y = scores,
-                                        nb_hidden = best_nb_hidden,
-                                        activ = activation_function,
-                                        lambda = best_lam,
-                                        method = "ginv",
-                                        compute_Sigma = TRUE)
-      # with averaged coeffs
-      fit_obj2 <- fit_obj
-      mat_coefs <- matrix(0, ncol = nb_iter + 1,
-                          nrow = length(fit_obj$coef))
-      colnames(mat_coefs) <- 1:(nb_iter + 1)
-      mat_coefs[ , 1] <- fit_obj$coef
-
-      find_next_param_by_ei <- function(x)
+      if (surrogate_model == "rvfl")
       {
-        x <- matrix(x, nrow = 1)
-        pred_obj <- bayesianrvfl::predict_rvfl(fit_obj2,
-                                               newx = x)
-        mu_hat <- pred_obj$mean
-        sigma_hat <- pred_obj$sd
-        gamma_hat <- (min(scores) - mu_hat)/sigma_hat
-        res <- -sigma_hat*(gamma_hat*pnorm(gamma_hat) + dnorm(gamma_hat))
-        return (ifelse(is.na(res), 100, res))
-      }
-      find_next_param_by_ei <- compiler::cmpfun(find_next_param_by_ei)
 
-      find_next_param_by_ucb <- function(x)
-      {
-        x <- matrix(x, nrow = 1)
-        pred_obj <- bayesianrvfl::predict_rvfl(fit_obj2,
-                                               newx = x)
-        return (-(pred_obj$mean - kappa*pred_obj$sd))
-      }
-      find_next_param_by_ucb <- compiler::cmpfun(find_next_param_by_ucb)
-
-      find_next_param <- switch(type_acq,
-                                "ei" = find_next_param_by_ei,
-                                "ucb" = find_next_param_by_ucb)
-
-      if (verbose == FALSE && show_progress == TRUE)
-      {
-        pb <- txtProgressBar(min = 1, max = nb_iter, style = 3)
-      }
-
-
-      for (iter in 1:nb_iter)
-      {
-        if (verbose == TRUE)
-        {
-          cat("\n")
-          cat("----- iteration #", iter, "\n")
-          cat("\n")
-        }
-
-        if (type_optim == "nlminb")
-        {
-          set.seed(iter + 1)
-          next_param <- suppressWarnings(stats::nlminb(start = lower + (upper-lower)*runif(length(lower)),
-                                                       objective = find_next_param,
-                                                       lower = lower, upper = upper)$par)
-        }
-
-        if (type_optim == "msnlminb")
-        {
-          next_param <- suppressWarnings(bayesianrvfl::msnlminb(objective = find_next_param,
-                                                                lower = lower,
-                                                                upper = upper,
-                                                                nb_iter = 10)$par)
-        }
-
-        if (type_optim == "DEoptim")
-        {
-          next_param <- suppressWarnings(DEoptim::DEoptim(fn = find_next_param,
-                                                          lower = lower,
-                                                          upper = upper,
-                                                          control = DEoptim::DEoptim.control(trace = FALSE,
-                                                                                             parallelType = 0,
-                                                                                             itermax = 25))$optim$bestmem)
-        }
-
-        if (param_is_found(parameters, next_param) == TRUE)
-        {
-          nb_is_found <- nb_is_found + 1
-          set.seed(iter + 1)
-          next_param <- lower + (upper - lower)*runif(dim_xx)
-        }
-
-        if (verbose == TRUE)
-        {
-          cat("next_param", "\n")
-          print(next_param)
-          cat("\n")
-        }
-
-        current_score <- OF(next_param)
-        if (verbose == TRUE)
-        {
-          cat("score", "\n")
-          print(current_score)
-          cat("\n")
-        }
-
-        parameters <- rbind(parameters, next_param)
-        scores <- c(scores, current_score)
-
-        fit_obj <- bayesianrvfl::update_params(fit_obj = fit_obj,
-                                               newx = next_param,
-                                               newy = current_score,
-                                               method = "polyak")
-
+        fit_obj <- bayesianrvfl::fit_rvfl(x = parameters, y = scores,
+                                          nb_hidden = best_nb_hidden,
+                                          activ = activation_function,
+                                          lambda = best_lam,
+                                          method = "ginv",
+                                          compute_Sigma = TRUE)
+        # with averaged coeffs
         fit_obj2 <- fit_obj
-        mat_coefs[ , (iter + 1)] <- fit_obj$coef
-        fit_obj2$coef <- rowMeans(mat_coefs)
+        mat_coefs <- matrix(0, ncol = nb_iter + 1,
+                            nrow = length(fit_obj$coef))
+        colnames(mat_coefs) <- 1:(nb_iter + 1)
+        mat_coefs[ , 1] <- fit_obj$coef
 
-        if (verbose == TRUE)
+        find_next_param_by_ei <- function(x)
         {
-          index_min <- which.min(scores)
-          best_param <- parameters[index_min,]
-          cat("current best param", "\n")
-          print(best_param)
-          cat("\n")
-          cat("current best score", "\n")
-          print(scores[index_min])
-          cat("\n")
+          x <- matrix(x, nrow = 1)
+          pred_obj <- bayesianrvfl::predict_rvfl(fit_obj2,
+                                                 newx = x)
+          mu_hat <- pred_obj$mean
+          sigma_hat <- pred_obj$sd
+          gamma_hat <- (min(scores) - mu_hat)/sigma_hat
+          res <- -sigma_hat*(gamma_hat*pnorm(gamma_hat) + dnorm(gamma_hat))
+          return (ifelse(is.na(res), 100, res))
+        }
+        find_next_param_by_ei <- compiler::cmpfun(find_next_param_by_ei)
+
+        find_next_param_by_ucb <- function(x)
+        {
+          x <- matrix(x, nrow = 1)
+          pred_obj <- bayesianrvfl::predict_rvfl(fit_obj2,
+                                                 newx = x)
+          return (-(pred_obj$mean - kappa*pred_obj$sd))
+        }
+        find_next_param_by_ucb <- compiler::cmpfun(find_next_param_by_ucb)
+
+        find_next_param <- switch(type_acq,
+                                  "ei" = find_next_param_by_ei,
+                                  "ucb" = find_next_param_by_ucb)
+
+        if (verbose == FALSE && show_progress == TRUE)
+        {
+          pb <- txtProgressBar(min = 1, max = nb_iter, style = 3)
         }
 
-        if (verbose == FALSE && show_progress == TRUE) setTxtProgressBar(pb, iter)
+
+        for (iter in 1:nb_iter)
+        {
+          if (verbose == TRUE)
+          {
+            cat("\n")
+            cat("----- iteration #", iter, "\n")
+            cat("\n")
+          }
+
+          if (type_optim == "nlminb")
+          {
+            set.seed(iter + 1)
+            next_param <- suppressWarnings(stats::nlminb(start = lower + (upper-lower)*runif(length(lower)),
+                                                         objective = find_next_param,
+                                                         lower = lower, upper = upper)$par)
+          }
+
+          if (type_optim == "msnlminb")
+          {
+            next_param <- suppressWarnings(bayesianrvfl::msnlminb(objective = find_next_param,
+                                                                  lower = lower,
+                                                                  upper = upper,
+                                                                  nb_iter = 10)$par)
+          }
+
+          if (type_optim == "DEoptim")
+          {
+            next_param <- suppressWarnings(DEoptim::DEoptim(fn = find_next_param,
+                                                            lower = lower,
+                                                            upper = upper,
+                                                            control = DEoptim::DEoptim.control(trace = FALSE,
+                                                                                               parallelType = 0,
+                                                                                               itermax = 25))$optim$bestmem)
+          }
+
+          if (param_is_found(parameters, next_param) == TRUE)
+          {
+            nb_is_found <- nb_is_found + 1
+            set.seed(iter + 1)
+            next_param <- lower + (upper - lower)*runif(dim_xx)
+          }
+
+          if (verbose == TRUE)
+          {
+            cat("next_param", "\n")
+            print(next_param)
+            cat("\n")
+          }
+
+          current_score <- OF(next_param)
+          if (verbose == TRUE)
+          {
+            cat("score", "\n")
+            print(current_score)
+            cat("\n")
+          }
+
+          parameters <- rbind(parameters, next_param)
+          scores <- c(scores, current_score)
+
+          fit_obj <- bayesianrvfl::update_params(fit_obj = fit_obj,
+                                                 newx = next_param,
+                                                 newy = current_score,
+                                                 method = "polyak")
+
+          fit_obj2 <- fit_obj
+          mat_coefs[ , (iter + 1)] <- fit_obj$coef
+          fit_obj2$coef <- rowMeans(mat_coefs)
+
+          if (verbose == TRUE)
+          {
+            index_min <- which.min(scores)
+            best_param <- parameters[index_min,]
+            cat("current best param", "\n")
+            print(best_param)
+            cat("\n")
+            cat("current best score", "\n")
+            print(scores[index_min])
+            cat("\n")
+          }
+
+          if (verbose == FALSE && show_progress == TRUE) setTxtProgressBar(pb, iter)
+        }
+        if (verbose == FALSE && show_progress == TRUE) close(pb)
       }
-      if (verbose == FALSE && show_progress == TRUE) close(pb)
+
+      if (surrogate_model == "matern52")
+      {stop("not implemented")}
     }
 
     # final best params

@@ -152,7 +152,7 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
 }
 
 # Fitting Matérn 5/2 model
-fit_gp <- function(x, y,
+fit_matern52 <- function(x, y,
                    sigma = 2, l = 0.1, lambda_krls = 0.1,
                    inv_method = c("chol", "ginv"),
                    compute_Sigma = FALSE)
