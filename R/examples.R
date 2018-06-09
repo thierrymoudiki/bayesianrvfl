@@ -383,23 +383,23 @@
 
 # example 1D --------------------------------------------------------------
 
-fw <- function (x)
-  10*sin(0.3*x)*sin(1.3*x^2) + 0.00001*x^4 + 0.2*x+80
-
-x <- seq(from = -50, to = 50, length.out = 10)
-y <- fw(x)
-(best_params <- find_lam_nbhidden(x = x, y = y))
-
-fit_obj <- fit_rvfl(x = x, y = y, nb_hidden = best_params$best_nb_hidden,
-                    lambda = best_params$best_lambda,
-                    compute_Sigma = TRUE)
-preds <- predict_rvfl(fit_obj, newx = as.matrix(x))
-upper_bound <- preds$mean + 1.96*preds$sd
-lower_bound <- preds$mean - 1.96*preds$sd
-
-plot(x, y, type = 'l',
-     ylim = c(min(lower_bound), max(upper_bound)))
-lines(x, preds$mean, col = 'red')
-lines(x, upper_bound, col = 'blue')
-lines(x, lower_bound, col = 'blue')
-
+# fw <- function (x)
+#   10*sin(0.3*x)*sin(1.3*x^2) + 0.00001*x^4 + 0.2*x+80
+#
+# x <- seq(from = -50, to = 50, length.out = 10)
+# y <- fw(x)
+# (best_params <- find_lam_nbhidden(x = x, y = y))
+#
+# fit_obj <- fit_rvfl(x = x, y = y, nb_hidden = best_params$best_nb_hidden,
+#                     lambda = best_params$best_lambda,
+#                     compute_Sigma = TRUE)
+# preds <- predict_rvfl(fit_obj, newx = as.matrix(x))
+# upper_bound <- preds$mean + 1.96*preds$sd
+# lower_bound <- preds$mean - 1.96*preds$sd
+#
+# plot(x, y, type = 'l',
+#      ylim = c(min(lower_bound), max(upper_bound)))
+# lines(x, preds$mean, col = 'red')
+# lines(x, upper_bound, col = 'blue')
+# lines(x, lower_bound, col = 'blue')
+#

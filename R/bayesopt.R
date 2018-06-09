@@ -6,7 +6,7 @@
                                 lams = 10^seq(-2, 10, length.out = 100)) # was 10^seq(-20, 1, length.out = 100)
   {
     mat_GCV <- sapply(vec_nb_hidden,
-                      function(i) fit_rvfl(x = x, y = y,
+                      function(i) bayesianrvfl::fit_rvfl(x = x, y = y,
                                            nb_hidden = i, lambda = lams)$GCV)
     #colnames(mat_GCV) <- paste0('nb_hidden=', vec_nb_hidden)
 
@@ -519,7 +519,7 @@
                                           nb_hidden = best_nb_hidden,
                                           activ = activation_function,
                                           lambda = best_lam,
-                                          method = "ginv",
+                                          method = "solve",
                                           compute_Sigma = TRUE)
 
         find_next_param_by_ei <- function(x)
@@ -647,7 +647,7 @@
                                           nb_hidden = best_nb_hidden,
                                           activ = activation_function,
                                           lambda = best_lam,
-                                          method = "ginv",
+                                          method = "solve",
                                           compute_Sigma = TRUE)
         # with averaged coeffs
         fit_obj2 <- fit_obj

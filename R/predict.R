@@ -88,7 +88,7 @@ predict_matern52 <- function(fit_obj, newx, ci = NULL)
       shrinked_K <- switch(
         inv_method,
         "chol" = chol2inv(chol(K + lambda_krls * diag(nrow(K)))),
-        "ginv" = my_ginv(K + lambda_krls * diag(nrow(K))))
+        "ginv" = bayesianrvfl::my_ginv(K + lambda_krls * diag(nrow(K))))
       Sigma <- sqrt(diag(K_star2 - crossprod(K_star, shrinked_K)%*%K_star))
       return (list(mean = preds,
                    sd = Sigma))
