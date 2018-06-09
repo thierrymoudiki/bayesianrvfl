@@ -12,7 +12,7 @@ update_params <- function(fit_obj, newx, newy,
 {
   stopifnot(is.null(nrow(newx)) && length(newx) > 1) # newx is a vector
   stopifnot(is.null(dim(newy)) && length(newy) == 1) # newy is a scalar
-  if(is.null(fit_obj$Dn)) stop("for argument 'fit_obj', you should have 'method == ginv' in function 'fit_rvfl'")
+  if(is.null(fit_obj$Dn)) stop("for argument 'fit_obj', you should have 'method == solve' in function 'fit_rvfl'")
   if(is.null(fit_obj$Sigma)) stop("for argument 'fit_obj', you should compute 'Sigma' in 'fit_rvfl'")
   method <- match.arg(method)
 
@@ -155,11 +155,11 @@ update_params <- function(fit_obj, newx, newy,
                 Dn <- vector("list", length = nlambda)
                 names(Dn) <- fit_obj$lambda
                 Dn <- lapply(1:nlambda, function (i)
-                  MASS::ginv(XTX + diag(x = fit_obj$lambda[i],
+                  solve.default(XTX + diag(x = fit_obj$lambda[i],
                                         nrow = ncol(XTX))))
                 fit_obj$Dn <- Dn
               } else {
-                Dn <- MASS::ginv(XTX + diag(x = fit_obj$lambda,
+                Dn <- solve.default(XTX + diag(x = fit_obj$lambda,
                                         nrow = ncol(XTX)))
                 fit_obj$Dn <- Dn
               }

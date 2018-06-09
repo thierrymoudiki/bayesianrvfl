@@ -124,7 +124,7 @@
                                              activ = activ)$predictors
         Sigma <- tcrossprod(x_augmented, x_augmented) + xx[2]*diag(n)
         res <- try(0.5*(n*log(2*pi) + log(det(Sigma)) +
-                          drop(crossprod(y, MASS::ginv(Sigma))%*%y)),
+                          drop(crossprod(y, solve.default(Sigma))%*%y)),
                    silent = TRUE)
 
         ifelse(class(res) == "try-error", -1e06, res)
@@ -143,7 +143,7 @@
                                   sigma = xx[1],
                                   l = xx[2]) + xx[3]*diag(n)
         res <- try(0.5*(n*log(2*pi) + log(det(Sigma)) +
-                          drop(crossprod(y, MASS::ginv(Sigma))%*%y)),
+                          drop(crossprod(y, solve.default(Sigma))%*%y)),
                    silent = TRUE)
 
         ifelse(class(res) == "try-error", -1e06, res)
@@ -655,6 +655,7 @@
                             nrow = length(fit_obj$coef))
         colnames(mat_coefs) <- 1:(nb_iter + 1)
         mat_coefs[ , 1] <- fit_obj$coef
+        #current_coefs <- fit_obj$coef
 
         find_next_param_by_ei <- function(x)
         {
@@ -755,7 +756,11 @@
 
           fit_obj2 <- fit_obj
           mat_coefs[ , (iter + 1)] <- fit_obj$coef
-          fit_obj2$coef <- rowMeans(mat_coefs)
+          #current_coefs <- current_coefs + (fit_obj$coef - current_coefs)/(iter + 1)
+          #print(drop(current_coefs))
+          #print(rowSums(mat_coefs)/(iter + 1))
+          fit_obj2$coef <- rowSums(mat_coefs)/(iter + 1)
+          #fit_obj2$coef <- current_coefs
 
           if (verbose == TRUE)
           {
