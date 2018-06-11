@@ -10,7 +10,11 @@ update_params <- function(fit_obj, newx, newy,
                           method = c("direct", "polyak"),
                           alpha = 0.5)
 {
-  stopifnot(is.null(nrow(newx)) && length(newx) > 1) # newx is a vector
+  cat("newx", "\n")
+  print(newx)
+  cat("\n")
+
+  stopifnot(length(newx) >= 1) # newx is a vector
   stopifnot(is.null(dim(newy)) && length(newy) == 1) # newy is a scalar
   if(is.null(fit_obj$Dn)) stop("for argument 'fit_obj', you should have 'method == solve' in function 'fit_rvfl'")
   if(is.null(fit_obj$Sigma)) stop("for argument 'fit_obj', you should compute 'Sigma' in 'fit_rvfl'")

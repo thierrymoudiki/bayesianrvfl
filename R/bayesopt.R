@@ -19,9 +19,15 @@
   # check if the set of parameter has already been found by the algo
   param_is_found <- function(mat, vec)
   {
-    res <- sum(sapply(1:nrow(mat),
-                      function(i) identical(mat[i, ], vec)))
-    return(ifelse(res >= 1, TRUE, FALSE))
+    mat <- as.matrix(mat)
+    if (ncol(mat) > 1) # more than 1 parameter
+    {
+      res <- sum(sapply(1:nrow(mat),
+                        function(i) (round(mat[i, ], 4) == round(vec, 4))))
+      return(ifelse(res >= 1, TRUE, FALSE))
+    } else { # 1 parameter
+      return((round(vec, 4) %in% round(mat[,1], 4)))
+    }
   }
 
   # scaled branin function for testing
@@ -204,8 +210,9 @@
                                                                             nrow = nb_init, ncol = dim_xx)
     scores <- apply(parameters, 1, OF)
 
-    parameters <- parameters[!is.na(scores),]
+    parameters <- as.matrix(parameters[!is.na(scores),])
     scores <- scores[!is.na(scores)]
+    print(cbind(parameters, scores))
 
     if (optim_surr == "GCV")
     {
@@ -226,6 +233,7 @@
 
         if (verbose == TRUE)
         {
+          cat("\n")
           if (optim_surr == "GCV") cat("----- GCV parameters", "\n")
           if (optim_surr == "loglik") cat("----- loglik parameters", "\n")
           cat("\n")
@@ -342,6 +350,9 @@
                                                                                                parallelType = 0, itermax = 25))$optim$bestmem)
           }
 
+          cat("param_is_found(parameters, next_param)", "\n")
+          print(param_is_found(parameters, next_param))
+          cat("\n")
           if (param_is_found(parameters, next_param) == TRUE)
           {
             nb_is_found <- nb_is_found + 1
@@ -366,6 +377,8 @@
 
           parameters <- rbind(parameters, next_param)
           scores <- c(scores, current_score)
+          cat("parameters and score", "\n")
+          print(cbind(parameters, scores))
 
 
           if (verbose == TRUE)
