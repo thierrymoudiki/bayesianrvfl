@@ -3,7 +3,7 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
                      activ = c("relu", "sigmoid", "tanh",
                                "leakyrelu", "elu", "linear"),
                      lambda = 10^seq(from = -5, to = 2, length.out = 100),
-                     method = c("svd", "solve"),
+                     method = c("svd", "chol"),
                      compute_Sigma = FALSE)
 {
   if (!is.vector(y)) stop("'y' must be a vector") # otherwise y - ym is not working
@@ -111,7 +111,7 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
     }
   }
 
-  if (method == "solve")
+  if (method == "chol")
   {
     XTX <- crossprod(X)
 
@@ -122,15 +122,15 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
       Sigma <- vector("list", length = nlambda)
       names(Sigma) <- lambda
       coef <- foreach::foreach(i = 1:nlambda, .combine = cbind)%do%{
-        Dn[[i]] <- solve.default(XTX + diag(x = lambda[i],
-                                         nrow = nrow(XTX))) # Cn^{-1}
+        Dn[[i]] <- chol2inv(chol(XTX + diag(x = lambda[i],
+                                         nrow = nrow(XTX)))) # Cn^{-1}
         Sigma[[i]] <- diag(ncol(X)) - Dn[[i]]%*%XTX # Sigma_n
         Dn[[i]]%*%crossprod(X, centered_y) # beta_n
       }
       colnames(coef) <- lambda
       rownames(coef) <- colnames(x_scaled$res)
     } else {
-      Dn <- solve.default(chol(XTX + diag(x = lambda,
+      Dn <- chol2inv(chol(XTX + diag(x = lambda,
                                        nrow = nrow(XTX)))) # Cn^{-1}
       Sigma <- diag(ncol(X)) - Dn%*%XTX # Sigma_n
       coef <- Dn%*%crossprod(X, centered_y) # beta_n

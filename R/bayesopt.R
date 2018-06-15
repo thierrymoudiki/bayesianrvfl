@@ -22,13 +22,13 @@
     mat <- as.matrix(mat)
     if (ncol(mat) > 1) # more than 1 parameter
     {
-      res <- sum(sapply(1:nrow(mat),
-                        function(i) (round(mat[i, ], 4) == round(vec, 4))))
+      res <- sum(apply(mat, 1, identical, vec))
       return(ifelse(res >= 1, TRUE, FALSE))
     } else { # 1 parameter
-      return((round(vec, 4) %in% round(mat[,1], 4)))
+      return(round(vec, 4) %in% round(mat[,1], 4))
     }
   }
+  param_is_found <- compiler::cmpfun(param_is_found)
 
   # scaled branin function for testing
   braninsc <- function(xx)
@@ -41,11 +41,7 @@
     z <- (term1 + term2 - 44.81) / 51.95
     return(z)
   }
-
-  # $par
-  # 0.2016895 0.1500107 0.4768740 0.2753324 0.3116516 0.6573005
-  # $objective
-  # [1] -3.322368
+  braninsc <- compiler::cmpfun(braninsc)
 
   # Hartmann 6
   hart6sc <- function(xx)
@@ -101,12 +97,21 @@
     y <- -outer
     return(y)
   }
+  hart6sc <- compiler::cmpfun(hart6sc)
 
   # Alpine 01
   alpine01 <- function(x)
   {
     sum(abs(x * sin(x) + 0.1 * x))
   }
+  alpine01 <- compiler::cmpfun(alpine01)
+
+  # 1D function
+  test1Dfunction <- function(x)
+  {
+    -(exp(-(x - 2)^2) + exp(-(x - 6)^2/10) + 1/(x^2 + 1))
+  }
+  test1Dfunction <- compiler::cmpfun(test1Dfunction)
 
   min_loglik <- function(x, y,
                          surrogate_model = c("rvfl", "matern52"),
@@ -130,7 +135,7 @@
                                              activ = activ)$predictors
         Sigma <- tcrossprod(x_augmented, x_augmented) + xx[2]*diag(n)
         res <- try(0.5*(n*log(2*pi) + log(det(Sigma)) +
-                          drop(crossprod(y, solve.default(Sigma))%*%y)),
+                          drop(crossprod(y, chol2inv(chol(Sigma)) )%*%y)),
                    silent = TRUE)
 
         ifelse(class(res) == "try-error", -1e06, res)
@@ -149,7 +154,7 @@
                                   sigma = xx[1],
                                   l = xx[2]) + xx[3]*diag(n)
         res <- try(0.5*(n*log(2*pi) + log(det(Sigma)) +
-                          drop(crossprod(y, solve.default(Sigma))%*%y)),
+                          drop(crossprod(y, chol2inv(chol(Sigma)) )%*%y)),
                    silent = TRUE)
 
         ifelse(class(res) == "try-error", -1e06, res)
@@ -159,14 +164,6 @@
                       lower =  c(1e-04, 1e-04, 1e-04),
                       upper = c(1e05, 1e05, 1e04)))
     }
-
-    # return(DEoptim::DEoptim(fn = OF,
-    #                         lower = c(1, 0.01),
-    #                         upper = c(100, 1e04),
-    #                         control = DEoptim::DEoptim.control(trace = FALSE,
-    #                                                            parallelType = 0,
-    #                                                            itermax = 50))$optim)
-
   }
 
 # 1 - optimization functions ---------------------------------------------------------------
@@ -212,7 +209,6 @@
 
     parameters <- as.matrix(parameters[!is.na(scores),])
     scores <- scores[!is.na(scores)]
-    print(cbind(parameters, scores))
 
     if (optim_surr == "GCV")
     {
@@ -350,9 +346,6 @@
                                                                                                parallelType = 0, itermax = 25))$optim$bestmem)
           }
 
-          cat("param_is_found(parameters, next_param)", "\n")
-          print(param_is_found(parameters, next_param))
-          cat("\n")
           if (param_is_found(parameters, next_param) == TRUE)
           {
             nb_is_found <- nb_is_found + 1
@@ -377,9 +370,6 @@
 
           parameters <- rbind(parameters, next_param)
           scores <- c(scores, current_score)
-          cat("parameters and score", "\n")
-          print(cbind(parameters, scores))
-
 
           if (verbose == TRUE)
           {
@@ -532,7 +522,7 @@
                                           nb_hidden = best_nb_hidden,
                                           activ = activation_function,
                                           lambda = best_lam,
-                                          method = "solve",
+                                          method = "chol",
                                           compute_Sigma = TRUE)
 
         find_next_param_by_ei <- function(x)
@@ -660,7 +650,7 @@
                                           nb_hidden = best_nb_hidden,
                                           activ = activation_function,
                                           lambda = best_lam,
-                                          method = "solve",
+                                          method = "chol",
                                           compute_Sigma = TRUE)
         # with averaged coeffs
         fit_obj2 <- fit_obj
