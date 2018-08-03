@@ -210,6 +210,13 @@
     parameters <- as.matrix(parameters[!is.na(scores),])
     scores <- scores[!is.na(scores)]
 
+    if (verbose == TRUE)
+    {
+      cat("initial design", "\n")
+      print(cbind.data.frame(parameters, scores))
+      cat("\n")
+    }
+
     if (optim_surr == "GCV")
     {
       best_params <- bayesianrvfl::find_lam_nbhidden(parameters, scores)
@@ -893,7 +900,7 @@
 
                                 setTxtProgressBar(pb, i)
 
-                                OF(searched_points[i, ])
+                                OF(searched_points[i, ], ...)
                               }
 
       close(pb)
@@ -913,7 +920,7 @@
                               .export = ...,
                               .verbose = FALSE,
                               .errorhandling = "stop")%dopar%{
-                                 OF(searched_points[i, ])
+                                 OF(searched_points[i, ], ...)
                               })
       snow::stopCluster(cl_SOCK)
     }
