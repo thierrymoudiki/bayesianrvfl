@@ -3,11 +3,14 @@
 
   # find regularization parameter and number of nodes with GCV
   find_lam_nbhidden <- function(x, y, vec_nb_hidden = 1:100, # was 1:100
-                                lams = 10^seq(-2, 10, length.out = 100)) # was 10^seq(-20, 1, length.out = 100)
+                                lams = 10^seq(-2, 10, length.out = 100),
+                                activ = c("relu", "sigmoid", "tanh"))
   {
+    activ <- match.arg(activ)
+
     mat_GCV <- sapply(vec_nb_hidden,
                       function(i) bayesianrvfl::fit_rvfl(x = x, y = y,
-                                           nb_hidden = i, lambda = lams)$GCV)
+                                           nb_hidden = i, lambda = lams, activ = activ)$GCV)
     #colnames(mat_GCV) <- paste0('nb_hidden=', vec_nb_hidden)
 
     best_coords <- which(mat_GCV == min(mat_GCV), arr.ind = TRUE)
