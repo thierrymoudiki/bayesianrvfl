@@ -1,3 +1,4 @@
+# fitting and rvfl
 fit_rvfl <- function(x, y, nb_hidden = 5,
                      nodes_sim = c("sobol", "halton", "unif"),
                      activ = c("relu", "sigmoid", "tanh",
@@ -203,5 +204,26 @@ fit_matern52 <- function(x, y,
   )
 
 }
+
+# Fitting elastic net
+fit_glmnet <- function(x, y, ...)
+{
+  if (!is.vector(y)) stop("'y' must be a vector") # otherwise y - ym is not working
+  x <- as.matrix(x)
+  y <- as.vector(y)
+
+  fit_obj <- glmnet::glmnet(x = x, y = y, ...)
+
+  fitted_values <- predict.elnet(fit_obj, newx = x)
+
+  return(
+    list(
+      y = y,
+      fitted_values = fitted_values,
+      resid = y - fitted_values
+    )
+  )
+}
+
 
 
