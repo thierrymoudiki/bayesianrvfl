@@ -1,174 +1,4 @@
 
-# 0 - utils ---------------------------------------------------------------
-
-  # find regularization parameter and number of nodes with GCV
-  find_lam_nbhidden <- function(x, y, vec_nb_hidden = 1:100, # was 1:100
-                                lams = 10^seq(-2, 10, length.out = 100),
-                                activ = c("relu", "sigmoid", "tanh"))
-  {
-    activ <- match.arg(activ)
-
-    mat_GCV <- sapply(vec_nb_hidden,
-                      function(i) bayesianrvfl::fit_rvfl(x = x, y = y,
-                                           nb_hidden = i, lambda = lams, activ = activ)$GCV)
-    #colnames(mat_GCV) <- paste0('nb_hidden=', vec_nb_hidden)
-
-    best_coords <- which(mat_GCV == min(mat_GCV), arr.ind = TRUE)
-
-    return(list(best_lambda = lams[best_coords[1]],
-                best_nb_hidden = vec_nb_hidden[best_coords[2]]))
-  }
-
-  # check if the set of parameter has already been found by the algo
-  param_is_found <- function(mat, vec)
-  {
-    mat <- as.matrix(mat)
-    if (ncol(mat) > 1) # more than 1 parameter
-    {
-      res <- sum(apply(mat, 1, identical, vec))
-      return(ifelse(res >= 1, TRUE, FALSE))
-    } else { # 1 parameter
-      return(round(vec, 4) %in% round(mat[,1], 4))
-    }
-  }
-  param_is_found <- compiler::cmpfun(param_is_found)
-
-  # scaled branin function for testing
-  braninsc <- function(xx)
-  {
-    x1_bar <- 15*xx[1] - 5
-    x2_bar <- 15*xx[2]
-
-    term1 <- (x2_bar - (5.1/(4*pi^2)) * x1_bar^2 + (5/pi)*x1_bar - 6)^2
-    term2 <- 10*(1-1/(8*pi))*cos(x1_bar)
-    z <- (term1 + term2 - 44.81) / 51.95
-    return(z)
-  }
-  braninsc <- compiler::cmpfun(braninsc)
-
-  # Hartmann 6
-  hart6sc <- function(xx)
-  {
-    ##########################################################################
-    #
-    # HARTMANN 6-DIMENSIONAL FUNCTION, RESCALED
-    #
-    # Authors: Sonja Surjanovic, Simon Fraser University
-    #          Derek Bingham, Simon Fraser University
-    # Questions/Comments: Please email Derek Bingham at dbingham@stat.sfu.ca.
-    #
-    # Copyright 2013. Derek Bingham, Simon Fraser University.
-    #
-    # THERE IS NO WARRANTY, EXPRESS OR IMPLIED. WE DO NOT ASSUME ANY LIABILITY
-    # FOR THE USE OF THIS SOFTWARE.  If software is modified to produce
-    # derivative works, such modified software should be clearly marked.
-    # Additionally, this program is free software; you can redistribute it
-    # and/or modify it under the terms of the GNU General Public License as
-    # published by the Free Software Foundation; version 2.0 of the License.
-    # Accordingly, this program is distributed in the hope that it will be
-    # useful, but WITHOUT ANY WARRANTY; without even the implied warranty
-    # of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-    # General Public License for more details.
-    #
-    # For function details and reference information, see:
-    # http://www.sfu.ca/~ssurjano/
-    #
-    ##########################################################################
-    #
-    # INPUT:
-    #
-    # xx = c(x1, x2, x3, x4, x5, x6)
-    #
-    ##########################################################################
-
-    alpha <- c(1.0, 1.2, 3.0, 3.2)
-    A <- c(10, 3, 17, 3.5, 1.7, 8,
-           0.05, 10, 17, 0.1, 8, 14,
-           3, 3.5, 1.7, 10, 17, 8,
-           17, 8, 0.05, 10, 0.1, 14)
-    A <- matrix(A, 4, 6, byrow=TRUE)
-    P <- 10^(-4) * c(1312, 1696, 5569, 124, 8283, 5886,
-                     2329, 4135, 8307, 3736, 1004, 9991,
-                     2348, 1451, 3522, 2883, 3047, 6650,
-                     4047, 8828, 8732, 5743, 1091, 381)
-    P <- matrix(P, 4, 6, byrow=TRUE)
-
-    xxmat <- matrix(rep(xx,times=4), 4, 6, byrow=TRUE)
-    inner <- rowSums(A[,1:6]*(xxmat-P[,1:6])^2)
-    outer <- sum(alpha * exp(-inner))
-
-    y <- -outer
-    return(y)
-  }
-  hart6sc <- compiler::cmpfun(hart6sc)
-
-  # Alpine 01
-  alpine01 <- function(x)
-  {
-    sum(abs(x * sin(x) + 0.1 * x))
-  }
-  alpine01 <- compiler::cmpfun(alpine01)
-
-  # 1D function
-  test1Dfunction <- function(x)
-  {
-    -(exp(-(x - 2)^2) + exp(-(x - 6)^2/10) + 1/(x^2 + 1))
-  }
-  test1Dfunction <- compiler::cmpfun(test1Dfunction)
-
-  min_loglik <- function(x, y,
-                         surrogate_model = c("rvfl", "matern52"),
-                         nodes_sim = c("sobol", "halton", "unif"),
-                         activ = c("relu", "sigmoid", "tanh",
-                                   "leakyrelu","elu", "linear"))
-  {
-    n <- nrow(x)
-    stopifnot(n == length(y))
-    nodes_sim <- match.arg(nodes_sim)
-    activ <- match.arg(activ)
-    surrogate_model <- match.arg(surrogate_model)
-
-    if (surrogate_model == "rvfl")
-    {
-      OF <- function(xx)
-      {
-        x_augmented <- create_new_predictors(x = x,
-                                             nb_hidden = floor(xx[1]),
-                                             nodes_sim = nodes_sim,
-                                             activ = activ)$predictors
-        Sigma <- tcrossprod(x_augmented, x_augmented) + xx[2]*diag(n)
-        res <- try(0.5*(n*log(2*pi) + log(det(Sigma)) +
-                          drop(crossprod(y, chol2inv(chol(Sigma)) )%*%y)),
-                   silent = TRUE)
-
-        ifelse(class(res) == "try-error", -1e06, res)
-      }
-
-      return(msnlminb(objective = OF, nb_iter = 50,
-                      lower =  c(1, 0.01),
-                      upper = c(100, 1e04)))
-    }
-
-    if (surrogate_model == "matern52")
-    {
-      OF <- function(xx)
-      {
-        Sigma <- matern52_kxx_cpp(x = x,
-                                  sigma = xx[1],
-                                  l = xx[2]) + xx[3]*diag(n)
-        res <- try(0.5*(n*log(2*pi) + log(det(Sigma)) +
-                          drop(crossprod(y, chol2inv(chol(Sigma)) )%*%y)),
-                   silent = TRUE)
-
-        ifelse(class(res) == "try-error", -1e06, res)
-      }
-
-      return(msnlminb(objective = OF, nb_iter = 50,
-                      lower =  c(1e-04, 1e-04, 1e-04),
-                      upper = c(1e05, 1e05, 1e04)))
-    }
-  }
-
 # 1 - optimization functions ---------------------------------------------------------------
 
 # 1 - 1 bayesian optimization ---------------------------------------------------------------
@@ -181,25 +11,32 @@
                                         "polyak_online"), # '*_online' available for rvfl only
                              surrogate_model = c("rvfl", "matern52", "rf"),
                              optim_surr = c("GCV", "loglik"),
-                             activation_function = c("relu", "tanh"),
+                             activation_function = c("relu", "tanh", "sigmoid"),
                              type_optim = c("nlminb", "DEoptim",
                                             "msnlminb"),
+                             early_stopping = FALSE, tol = 1e-02,# currently only for method == 'direct_online'
                              seed = 123,
                              verbose = TRUE,
-                             show_progress = TRUE,
-                             record_points = FALSE, ...)
+                             show_progress = TRUE, ...)
   {
     OF <- function(y) objective(y, ...)
     nb_is_found <- 0
     dim_xx <- length(lower)
     stopifnot(dim_xx == length(upper))
     type_acq <- match.arg(type_acq)
+    #vec_acq <- rep(0L, nb_iter)
     type_optim <- match.arg(type_optim)
     method <- match.arg(method)
     activation_function <- match.arg(activation_function)
     optim_surr <- match.arg(optim_surr)
     surrogate_model <- match.arg(surrogate_model)
+
     if (surrogate_model == "matern52") optim_surr <- "loglik" # to me MODIFIED
+
+    if (verbose == TRUE)
+    {
+      cat("\n", "----- define initial design...", "\n")
+    }
 
     rep_1_nb_init <- rep(1, nb_init)
     lower_mat_init <- tcrossprod(rep_1_nb_init, lower)
@@ -212,6 +49,19 @@
 
     parameters <- as.matrix(parameters[!is.na(scores),])
     scores <- scores[!is.na(scores)]
+
+    n_points_in_domain <- 1000 # for the calculation of integrated acquisition
+    rep_1_n_points_in_domain <- rep(1, n_points_in_domain)
+    lower_mat_points_in_domain <- tcrossprod(rep_1_n_points_in_domain,
+                                             lower)
+    upper_mat_points_in_domain <- tcrossprod(rep_1_n_points_in_domain,
+                                             upper)
+    points_in_domain <- lower_mat_points_in_domain + (upper_mat_points_in_domain - lower_mat_points_in_domain)*randtoolbox::sobol(n = n_points_in_domain,
+                                           dim = dim_xx) # for the calculation of integrated acquisition
+
+    # cat("points in domain", "\n")
+    # print(points_in_domain)
+    # cat("\n")
 
     if (verbose == TRUE)
     {
@@ -232,6 +82,7 @@
       if (surrogate_model == "rvfl")
       {
         best_params <- bayesianrvfl::min_loglik(x = parameters, y = scores,
+                                                surrogate_model = "rvfl",
                                                 nodes_sim = "sobol",
                                                 activ = activation_function)
         best_lam <- best_params$par[2]
@@ -487,6 +338,9 @@
             cat("next_param", "\n")
             print(next_param)
             cat("\n")
+            if (type_acq == "ei") cat("Expected Improvement", "\n") else cat("Lower confidence bound", "\n")
+            print(find_next_param(next_param))
+            cat("\n")
           }
 
           current_score <- OF(next_param)
@@ -538,7 +392,11 @@
         find_next_param_by_ei <- function(x)
         {
           x <- matrix(x, nrow = 1)
-          pred_obj <- bayesianrvfl::predict_rvfl(fit_obj,
+          pred_obj <- bayesianrvfl::predict_rvfl(bayesianrvfl::fit_rvfl(x = parameters, y = scores,
+                                                                        activ = activation_function,
+                                                                        nb_hidden = best_nb_hidden,
+                                                                        lambda = best_lam,
+                                                                        compute_Sigma = TRUE),
                                                  newx = x)
           mu_hat <- pred_obj$mean
           sigma_hat <- pred_obj$sd
@@ -627,6 +485,17 @@
           fit_obj <- bayesianrvfl::update_params(fit_obj = fit_obj,
                                                  newx = next_param, newy = current_score,
                                                  method = "direct")
+
+            #vec_acq[iter] <- mean(sapply(1:n_points_in_domain,
+            #                             function (i) find_next_param(points_in_domain[i, ])))
+
+            # if (type_acq == "ei" && early_stopping == TRUE)
+            # {
+            #   # cat("a_mcei", "\n")
+            #   # print(vec_acq[iter])
+            #   # cat("\n")
+            #   if (abs(vec_acq[iter]) <= tol) break
+            # }
 
           if (verbose == TRUE)
           {
@@ -800,23 +669,16 @@
     index_min <- which.min(scores)
     best_param <- parameters[index_min,]
 
-    if (record_points == FALSE){
-      return(list(index_min = index_min,
-                  nb_is_found = nb_is_found,
-                  best_param = best_param,
-                  best_value = scores[index_min]))
-    } else {
-
-      points_found <- cbind.data.frame(parameters, scores)
+      points_found <- cbind(parameters, scores)
       n_params <- ncol(parameters)
       colnames(points_found) <- c(paste0("param", 1:n_params), "score")
 
       return(list(index_min = index_min,
                   nb_is_found = nb_is_found,
+                  #vec_acq = vec_acq,
                   best_param = best_param,
                   best_value = scores[index_min],
-                  points_found = cbind(parameters, scores)))
-    }
+                  points_found = points_found))
 
   }
 

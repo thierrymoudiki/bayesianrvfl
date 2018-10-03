@@ -96,3 +96,25 @@ predict_matern52 <- function(fit_obj, newx, ci = NULL)
       return(preds)
     }
 }
+
+predict_glmnet <- function(fit_obj, newx, ci = NULL)
+{
+  if (is.vector(newx)) newx <- t(newx)
+
+  list_xreg <- create_new_predictors(x = newx,
+                                nb_hidden = fit_obj$nb_hidden,
+                                nn_xm = fit_obj$nn_xm,
+                                nn_scales = fit_obj$nn_scales,
+                                activ = fit_obj$activ,
+                                nodes_sim = fit_obj$nodes_sim)
+  newx_scaled <- my_scale(list_xreg$predictors)
+  newX <- newx_scaled$res
+
+  if (is.null(ci))
+  {
+    return(predict.elnet(fit_obj$fit_obj, newx = newX))
+  } else {
+
+  }
+
+}

@@ -206,21 +206,43 @@ fit_matern52 <- function(x, y,
 }
 
 # Fitting elastic net
-fit_glmnet <- function(x, y, ...)
+fit_glmnet <- function(x, y, nb_hidden = 5,
+                       nodes_sim = c("sobol", "halton", "unif"),
+                       activ = c("relu", "sigmoid", "tanh",
+                                 "leakyrelu", "elu", "linear"),
+                       ...)
 {
   if (!is.vector(y)) stop("'y' must be a vector") # otherwise y - ym is not working
   x <- as.matrix(x)
   y <- as.vector(y)
 
-  fit_obj <- glmnet::glmnet(x = x, y = y, ...)
+  ym <- mean(y)
+  centered_y <- y - ym
 
-  fitted_values <- predict.elnet(fit_obj, newx = x)
+  nodes_sim <- match.arg(nodes_sim)
+  activ <- match.arg(activ)
+  list_xreg <- bayesianrvfl::create_new_predictors(x = x, nb_hidden = nb_hidden,
+                                     nodes_sim = nodes_sim,
+                                     activ = activ)
+
+  x_scaled <- my_scale(list_xreg$predictors)
+  X <- x_scaled$res
+
+  fit_obj <- glmnet::glmnet(x = X, y = y, ...)
+
+  # obtain fitted values
+
+  fitted_values <- predict.elnet(fit_obj, newx = X)
 
   return(
-    list(
-      y = y,
-      fitted_values = fitted_values,
-      resid = y - fitted_values
+    list(fit_obj = fit_obj,
+         scales = x_scaled$xsd,
+         ym = ym, xm = x_scaled$xm,
+         nb_hidden = nb_hidden,
+         nn_xm = list_xreg$nn_xm, nn_scales = list_xreg$nn_scales,
+         nodes_sim = nodes_sim, activ = activ,
+         y = y, fitted_values = fitted_values,
+         resid = y - fitted_values
     )
   )
 }
