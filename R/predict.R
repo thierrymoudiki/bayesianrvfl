@@ -101,20 +101,36 @@ predict_glmnet <- function(fit_obj, newx, ci = NULL)
 {
   if (is.vector(newx)) newx <- t(newx)
 
-  list_xreg <- create_new_predictors(x = newx,
+  newx <- create_new_predictors(x = newx,
                                 nb_hidden = fit_obj$nb_hidden,
                                 nn_xm = fit_obj$nn_xm,
                                 nn_scales = fit_obj$nn_scales,
                                 activ = fit_obj$activ,
-                                nodes_sim = fit_obj$nodes_sim)
-  newx_scaled <- my_scale(list_xreg$predictors)
-  newX <- newx_scaled$res
+                                nodes_sim = fit_obj$nodes_sim)$predictors
+  xm <- as.vector(fit_obj$xm)
+  scales <- as.vector(fit_obj$scales)
+  scaled_newx <- my_scale(x = as.matrix(newx), xm = xm,
+                          xsd = scales)
 
   if (is.null(ci))
   {
-    return(predict.elnet(fit_obj$fit_obj, newx = newX))
+
+    return(predict.elnet(fit_obj$fit_obj, newx = scaled_newx))
+
   } else {
 
+    d <- data.frame(x = fit_obj$resid)
+
+      mean.fun <- function(d, i)
+      {    m <- mean(d$x[i])
+        n <- length(i)
+        v <- (n-1)*var(d$x[i])/n^2
+        c(m, v)
+      }
+
+    preds <- predict.elnet(fit_obj$fit_obj, newx = scaled_newx)
+    resid_boot <- boot::boot(fit_obj$resid, mean.fun, R = 999)
+    boot_ci <- boot::boot.ci(fit_obj$resid, type = "basic")
   }
 
 }

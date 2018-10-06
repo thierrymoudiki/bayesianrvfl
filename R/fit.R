@@ -1,4 +1,4 @@
-# fitting and rvfl
+# fitting an rvfl ----
 fit_rvfl <- function(x, y, nb_hidden = 5,
                      nodes_sim = c("sobol", "halton", "unif"),
                      activ = c("relu", "sigmoid", "tanh",
@@ -11,7 +11,7 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
 
     if (!is.factor(y))
     {
-        ## regression
+        ## regression ----
         stopifnot(nb_hidden > 0)
         x <- as.matrix(x)
         y <- as.vector(y)
@@ -150,17 +150,19 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
                       nn_xm = list_xreg$nn_xm,
                       nn_scales = list_xreg$nn_scales,
                       fitted_values = drop(ym + X %*% coef),
+                      GCV = GCV,
                       compute_Sigma = compute_Sigma,
                       x = x, y = y))
         }
 
     } else { # if is.factor(y)
 
-        ## classification
+        ## classification ----
         stopifnot(nb_hidden > 0)
         x <- as.matrix(x)
         y <- factor_to_matrix(y)
         nlambda <- length(lambda)
+        method <- match.arg(method)
 
         nodes_sim <- match.arg(nodes_sim)
         activ <- match.arg(activ)
@@ -175,7 +177,7 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
         {
           # inspired from MASS::lm.ridge
           Xs <- La.svd(X)
-          rhs <- crossprod(Xs$u, y)
+          rhs <- crossprod(Xs$u, y[,1])
           d <- Xs$d
           nb_di <- length(d)
           div <- d^2 + rep(lambda, rep(nb_di, nlambda))
@@ -188,73 +190,28 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
             vt <- Xs$vt
             coef <- crossprod(vt, a)
             y_hat <- X %*% coef
-            GCV <- colSums((y - y_hat)^2)/(n - colSums(matrix(d^2/div,
-                                                                                nb_di)))^2
+            GCV <- colSums((y - y_hat)^2)/(n - colSums(matrix(d^2/div, nb_di)))^2
 
-            if (compute_Sigma == TRUE)
-            {
-              rhsX <- crossprod(Xs$u, X)
-              aX <- drop(d * rhsX)/div
-              Sigma <- diag(ncol(X)) - crossprod(vt, aX)
-              rownames(Sigma) <- colnames(X)
-              return(list(coef = drop(coef), scales = x_scaled$xsd,
-                          Sigma = Sigma, lambda = lambda, ym = ym,
-                          xm = x_scaled$xm, nb_hidden = nb_hidden,
-                          nn_xm = list_xreg$nn_xm, nn_scales = list_xreg$nn_scales,
-                          nodes_sim = nodes_sim, activ = activ,
-                          fitted_values = drop(ym +  y_hat),
-                          GCV = GCV,
-                          compute_Sigma = compute_Sigma))
-            } else { #else: compute_Sigma == FALSE && nlambda == 1
-              return(list(coef = drop(coef), scales = x_scaled$xsd,
-                          lambda = lambda, ym = ym, xm = x_scaled$xm,
-                          nb_hidden = nb_hidden, nn_xm = list_xreg$nn_xm,
-                          nn_scales = list_xreg$nn_scales,
-                          nodes_sim = nodes_sim, activ = activ,
-                          fitted_values = drop(ym +  y_hat),
-                          GCV = GCV,
-                          compute_Sigma = compute_Sigma))
-            }
           } else { #else: nlambda > 1
             coef <- crossprod(Xs$vt, a)
             colnames(coef) <- lambda
             y_hat <- X %*% coef
-            fitted_values <- drop(ym +  y_hat)
+            fitted_values <- drop(y_hat)
             colnames(fitted_values) <- lambda
-            GCV <- colSums((y - y_hat)^2)/(n - colSums(matrix(d^2/div,
-                                                                                nb_di)))^2
-
-            if (compute_Sigma == TRUE) #compute_Sigma == TRUE && nlambda > 1
-            {
-              rhsX <- crossprod(Xs$u, X)
-              `%op%` <-  foreach::`%do%`
-              i <- NULL
-              Sigma <- foreach::foreach(i = 1:nlambda)%op%{
-                div_i <- d^2 + rep(lambda[i], rep(nb_di, 1))
-                aX_i <- drop(d * rhsX)/div_i
-                Sigma <- diag(ncol(X)) - crossprod(Xs$vt, aX_i)
-                rownames(Sigma) <- colnames(X)
-                Sigma
-              }
-              names(Sigma) <- lambda
-              return(list(coef = drop(coef), scales = x_scaled$xsd, Sigma = Sigma,
-                          lambda = lambda, ym = ym, xm = x_scaled$xm, nb_hidden = nb_hidden,
-                          nn_xm = list_xreg$nn_xm, nn_scales = list_xreg$nn_scales,
-                          nodes_sim = nodes_sim, activ = activ,
-                          fitted_values = fitted_values,
-                          GCV = GCV,
-                          compute_Sigma = compute_Sigma))
-            } else { #else: compute_Sigma == FALSE && length(lambda) == 1
-
-              return(list(coef = drop(coef), scales = x_scaled$xsd,
-                          lambda = lambda, ym = ym, xm = x_scaled$xm,
-                          nb_hidden = nb_hidden, nn_xm = list_xreg$nn_xm, nn_scales = list_xreg$nn_scales,
-                          nodes_sim = nodes_sim, activ = activ,
-                          fitted_values = drop(ym +  y_hat),
-                          GCV = GCV,
-                          compute_Sigma = compute_Sigma))
-            }
+            GCV <- colSums((y[,1] - y_hat)^2)/(n - colSums(matrix(d^2/div, nb_di)))^2
           }
+
+          return(list(coef = coef, #Dn = Dn, #Sigma = Sigma,
+                      scales = x_scaled$xsd, lambda = lambda,
+                      xm = x_scaled$xm,
+                      nb_hidden = nb_hidden,
+                      nodes_sim = nodes_sim,
+                      activ = activ,
+                      nn_xm = list_xreg$nn_xm,
+                      nn_scales = list_xreg$nn_scales,
+                      fitted_values = drop(X %*% coef),
+                      #compute_Sigma = compute_Sigma,
+                      x = x, y = y))
         }
 
         if (method == "chol")
@@ -270,35 +227,34 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
             coef <- foreach::foreach(i = 1:nlambda, .combine = cbind)%do%{
               Dn[[i]] <- chol2inv(chol(XTX + diag(x = lambda[i],
                                                   nrow = nrow(XTX)))) # Cn^{-1}
-              Sigma[[i]] <- diag(ncol(X)) - Dn[[i]]%*%XTX # Sigma_n
+              #Sigma[[i]] <- diag(ncol(X)) - Dn[[i]]%*%XTX # Sigma_n
               Dn[[i]]%*%crossprod(X, y) # beta_n
             }
-            colnames(coef) <- lambda
+            #colnames(coef) <- lambda
             rownames(coef) <- colnames(x_scaled$res)
           } else {
             Dn <- chol2inv(chol(XTX + diag(x = lambda,
                                            nrow = nrow(XTX)))) # Cn^{-1}
-            Sigma <- diag(ncol(X)) - Dn%*%XTX # Sigma_n
+            #Sigma <- diag(ncol(X)) - Dn%*%XTX # Sigma_n
             coef <- Dn%*%crossprod(X, y) # beta_n
           }
 
-          return(list(coef = coef, Dn = Dn, Sigma = Sigma,
+          return(list(coef = coef, Dn = Dn, #Sigma = Sigma,
                       scales = x_scaled$xsd, lambda = lambda,
-                      ym = ym, xm = x_scaled$xm,
+                      xm = x_scaled$xm,
                       nb_hidden = nb_hidden,
                       nodes_sim = nodes_sim,
                       activ = activ,
                       nn_xm = list_xreg$nn_xm,
                       nn_scales = list_xreg$nn_scales,
-                      fitted_values = drop(ym + X %*% coef),
-                      compute_Sigma = compute_Sigma,
+                      fitted_values = drop(X %*% coef),
+                      #compute_Sigma = compute_Sigma,
                       x = x, y = y))
         }
-
     }
 }
 
-# Fitting Matérn 5/2 model
+# fitting Matérn 5/2 model ----
 fit_matern52 <- function(x, y,
                    sigma = 2, l = 0.1, lambda_krls = 0.1,
                    inv_method = c("chol", "ginv"),
@@ -351,7 +307,7 @@ fit_matern52 <- function(x, y,
 
 }
 
-# Fitting elastic net
+# fitting elastic net ----
 fit_glmnet <- function(x, y, nb_hidden = 5,
                        nodes_sim = c("sobol", "halton", "unif"),
                        activ = c("relu", "sigmoid", "tanh",
@@ -394,24 +350,24 @@ fit_glmnet <- function(x, y, nb_hidden = 5,
 }
 
 
-sigmoid <- function(x) exp(x)/(1 + exp(x))
-n_iris <- nrow(iris)
-index_train <- sort(sample(1:n_iris, size = floor(0.8*n_iris)))
-x_train <- as.matrix(iris[index_train, 1:4])
-X_train <- cbind(1, x_train)
-y_train <- factor_to_matrix(iris$Species[index_train])
-fit_lm <- .lm.fit(x = X_train, y = y_train)
-
-x_test <- as.matrix(iris[-index_train, 1:4])
-X_test <- cbind(1, x_test)
-yhat <- X_test%*%fit_lm$coefficients
-preds <- sapply(1:3, function (i) as.numeric(yhat[,i] > 0.5))
-colnames(preds) <- colnames(y_test)
-rownames(preds) <- 1:nrow(preds)
-probs <- sigmoid(yhat)
-y_test <- factor_to_matrix(iris$Species[-index_train])
-
-
-colMeans(y_test == preds)
-
-
+# sigmoid <- function(x) exp(x)/(1 + exp(x))
+# n_iris <- nrow(iris)
+# index_train <- sort(sample(1:n_iris, size = floor(0.8*n_iris)))
+# x_train <- as.matrix(iris[index_train, 1:4])
+# X_train <- cbind(1, x_train)
+# y_train <- factor_to_matrix(iris$Species[index_train])
+# fit_lm <- .lm.fit(x = X_train, y = y_train)
+#
+# x_test <- as.matrix(iris[-index_train, 1:4])
+# X_test <- cbind(1, x_test)
+# yhat <- X_test%*%fit_lm$coefficients
+# preds <- sapply(1:3, function (i) as.numeric(yhat[,i] > 0.5))
+# colnames(preds) <- colnames(y_test)
+# rownames(preds) <- 1:nrow(preds)
+# probs <- sigmoid(yhat)
+# y_test <- factor_to_matrix(iris$Species[-index_train])
+#
+#
+# colMeans(y_test == preds)
+#
+#
