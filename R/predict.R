@@ -1,3 +1,4 @@
+# predicting from an rvfl ----
 predict_rvfl <- function(fit_obj, newx, ci = NULL, graph = FALSE)
 {
 
@@ -52,6 +53,7 @@ predict_rvfl <- function(fit_obj, newx, ci = NULL, graph = FALSE)
   }
 }
 
+# predicting from Matérn 5/2 model ----
 predict_matern52 <- function(fit_obj, newx, ci = NULL)
 {
    if (is.vector(newx)) newx <- t(newx)
@@ -97,6 +99,7 @@ predict_matern52 <- function(fit_obj, newx, ci = NULL)
     }
 }
 
+# predicting from elastic net ----
 predict_glmnet <- function(fit_obj, newx, ci = NULL)
 {
   if (is.vector(newx)) newx <- t(newx)

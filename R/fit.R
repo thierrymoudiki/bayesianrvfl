@@ -150,7 +150,6 @@ fit_rvfl <- function(x, y, nb_hidden = 5,
                       nn_xm = list_xreg$nn_xm,
                       nn_scales = list_xreg$nn_scales,
                       fitted_values = drop(ym + X %*% coef),
-                      GCV = GCV,
                       compute_Sigma = compute_Sigma,
                       x = x, y = y))
         }
