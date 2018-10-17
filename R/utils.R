@@ -301,6 +301,7 @@ initial_design <- function(x, y, # x = covariates, y = response
 
 }
 
+# convert a factor to a matrix of responses
 factor_to_matrix <- function(x)
 {
   if (!is.factor(x)) x <- as.factor(x)
@@ -319,4 +320,27 @@ factor_to_matrix <- function(x)
   rownames(res) <- 1:n
 
   return(res)
+}
+
+# calculate tolerance
+calc_tol <- function(acq)
+{
+  acq <- acq[!is.na(acq)]
+  n_acq <- length(acq)
+  rel_tol <- abs(1 - acq[-1]/acq[-n_acq])
+  abs_tol <- abs(acq[-1] - acq[-n_acq])
+  return(list(vec_abs_tol = abs_tol,
+              vec_rel_tol = rel_tol,
+              abs_tol = tail(abs_tol, 1),
+              rel_tol = tail(rel_tol, 1)))
+}
+calc_tol <- compiler::cmpfun(calc_tol)
+
+# resample
+
+resample <- function(x, seed = 123)
+{
+  n <- nrow(x)
+  set.seed(seed)
+  return(x[sample(1:n, size = n, replace = TRUE),])
 }

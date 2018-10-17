@@ -1,4 +1,4 @@
-# fitting an rvfl ----
+
 fit_rvfl <- function(x, y, nb_hidden = 5,
                      nodes_sim = c("sobol", "halton", "unif"),
                      activ = c("relu", "sigmoid", "tanh",
@@ -311,41 +311,74 @@ fit_glmnet <- function(x, y, nb_hidden = 5,
                        nodes_sim = c("sobol", "halton", "unif"),
                        activ = c("relu", "sigmoid", "tanh",
                                  "leakyrelu", "elu", "linear"),
+                       compute_Sigma = FALSE,
                        ...)
 {
   if (!is.vector(y)) stop("'y' must be a vector") # otherwise y - ym is not working
   x <- as.matrix(x)
   y <- as.vector(y)
-
   ym <- mean(y)
   centered_y <- y - ym
 
   nodes_sim <- match.arg(nodes_sim)
   activ <- match.arg(activ)
-  list_xreg <- bayesianrvfl::create_new_predictors(x = x, nb_hidden = nb_hidden,
-                                     nodes_sim = nodes_sim,
-                                     activ = activ)
 
-  x_scaled <- my_scale(list_xreg$predictors)
-  X <- x_scaled$res
+  if (compute_Sigma == FALSE)
+  {
+    list_xreg <- bayesianrvfl::create_new_predictors(x = x, nb_hidden = nb_hidden,
+                                                     nodes_sim = nodes_sim,
+                                                     activ = activ)
 
-  fit_obj <- glmnet::glmnet(x = X, y = y, ...)
+    x_scaled <- my_scale(list_xreg$predictors)
+    X <- x_scaled$res
 
-  # obtain fitted values
+    fit_obj <- glmnet::glmnet(x = X, y = y,
+                              ...)
 
-  fitted_values <- predict.elnet(fit_obj, newx = X)
+    # obtain fitted values
 
-  return(
-    list(fit_obj = fit_obj,
-         scales = x_scaled$xsd,
-         ym = ym, xm = x_scaled$xm,
-         nb_hidden = nb_hidden,
-         nn_xm = list_xreg$nn_xm, nn_scales = list_xreg$nn_scales,
-         nodes_sim = nodes_sim, activ = activ,
-         y = y, fitted_values = fitted_values,
-         resid = y - fitted_values
+    fitted_values <- predict(fit_obj, newx = X)
+
+    return(
+      list(fit_obj = fit_obj,
+           scales = x_scaled$xsd,
+           ym = ym, xm = x_scaled$xm,
+           nb_hidden = nb_hidden,
+           nn_xm = list_xreg$nn_xm, nn_scales = list_xreg$nn_scales,
+           nodes_sim = nodes_sim, activ = activ,
+           y = y, fitted_values = fitted_values,
+           resid = y - fitted_values,
+           compute_Sigma = compute_Sigma
+      )
     )
-  )
+  } else {
+    x_scaled_list <- xreg_list <- X_list <- vector("list", 100)
+    fit_obj_list <- foreach::foreach(i = 1:100, .errorhandling = "pass")%do%{
+      xreg_list[[i]] <- bayesianrvfl::create_new_predictors(x = bayesianrvfl::resample(x, seed = i),
+                                                       nb_hidden = nb_hidden,
+                                                       nodes_sim = nodes_sim,
+                                                       activ = activ)
+      x_scaled_list[[i]] <- my_scale(xreg_list[[i]]$predictors)
+      X_list[[i]] <- x_scaled_list[[i]]$res
+      suppressWarnings(glmnet::glmnet(x = X_list[[i]], y = y,
+                                      ...))
+    }
+
+    return(
+      list(fit_obj_list = fit_obj_list,
+           scales = lapply(1:length(fit_obj_list), function(i) x_scaled_list[[i]]$xsd),
+           xm = lapply(1:length(fit_obj_list), function(i) x_scaled_list[[i]]$xm),
+           nb_hidden = nb_hidden,
+           nn_xm = lapply(1:length(fit_obj_list), function(i) xreg_list[[i]]$nn_xm),
+           nn_scales = lapply(1:length(fit_obj_list), function(i) xreg_list[[i]]$nn_scales),
+           nodes_sim = nodes_sim, activ = activ,
+           y = y,
+           compute_Sigma = compute_Sigma
+           #resid = y - fitted_values
+      )
+    )
+  }
+
 }
 
 

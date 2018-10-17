@@ -154,4 +154,3 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
   rownames(res) <- vec_nb_hidden
   return(res)
 }
-
