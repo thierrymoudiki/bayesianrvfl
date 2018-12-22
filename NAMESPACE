@@ -7,5 +7,4 @@ importFrom("stats", "Box.test", "cor", "dnorm", "dunif", "nlminb",
              "pnorm", "shapiro.test", "t.test", "var")
 importFrom("utils", "setTxtProgressBar", "tail")
 import("foreach")
-import("glmnet")
 useDynLib("bayesianrvfl")

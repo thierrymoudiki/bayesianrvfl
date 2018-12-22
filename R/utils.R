@@ -1,3 +1,20 @@
+# one-hot-encoding of vector x_clusters on n_clusters
+one_hot_encode <- function(x_clusters, n_clusters)
+{
+  stopifnot(max(x_clusters) <= n_clusters)
+  n_obs <- length(x_clusters)
+
+  # matrix of results
+  res <- matrix(0, nrow = n_obs,
+                ncol = n_clusters)
+
+    for (i in 1:n_obs){
+      res[i, x_clusters[i]] <- 1
+    }
+
+  return (res)
+}
+
 # find regularization parameter and number of nodes with GCV
 find_lam_nbhidden <- function(x, y, vec_nb_hidden = 1:100, # was 1:100
                               lams = 10^seq(-2, 10, length.out = 100),
