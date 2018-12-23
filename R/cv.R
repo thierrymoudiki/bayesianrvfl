@@ -40,7 +40,7 @@ create_folds <- function(y, k = 10)
 }
 create_folds <- compiler::cmpfun(create_folds)
 
-compute_accuracy <- function(x, y, nb_hidden = 5,
+compute_accuracy <- function(x, y, nb_hidden = 5, n_clusters = 2,
                              nodes_sim = c("sobol", "halton", "unif"),
                              activ = c("relu", "sigmoid", "tanh",
                                        "leakyrelu", "elu", "linear"),
@@ -68,8 +68,8 @@ compute_accuracy <- function(x, y, nb_hidden = 5,
         test_index <- -train_index
         fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
                             nodes_sim = nodes_sim, activ = activ,
-                            nb_hidden = nb_hidden, lambda = lambda,
-                            compute_Sigma = FALSE)
+                            nb_hidden = nb_hidden, n_clusters = n_clusters,
+                            lambda = lambda, compute_Sigma = FALSE)
         predict_rvfl(fit_obj, newx = x[test_index, ]) - y[test_index]
       }
     }
@@ -86,8 +86,8 @@ compute_accuracy <- function(x, y, nb_hidden = 5,
       test_index <- -train_index
       fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
                           nodes_sim = nodes_sim, activ = activ,
-                          nb_hidden = nb_hidden, lambda = lambda,
-                          compute_Sigma = FALSE)
+                          nb_hidden = nb_hidden, n_clusters = n_clusters,
+                          lambda = lambda, compute_Sigma = FALSE)
       predict_rvfl(fit_obj, newx = x[test_index, ]) - y[test_index]
     }
 
@@ -102,15 +102,18 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
                     activ = c("relu", "sigmoid", "tanh",
                               "leakyrelu", "elu", "linear"),
                     vec_nb_hidden = seq(from = 100, to = 1000, by = 100),
+                    vec_n_clusters = c(0, seq(2, 10, by = 1)),
                     lams = 10^seq(-2, 10, length.out = 100), seed = 1,
                     cl = NULL)
 {
   x <- as.matrix(x)
   y <- as.vector(y)
 
-  nb_iter <- length(vec_nb_hidden)
   nodes_sim <- match.arg(nodes_sim)
   activ <- match.arg(activ)
+  nodes_clusters_df <- expand_grid_df(vec_nb_hidden,
+                                      vec_n_clusters)
+  nb_iter <- nrow(nodes_clusters_df)
 
   allowParallel <- !is.null(cl) && cl > 0
   if(allowParallel)
@@ -141,16 +144,22 @@ cv_rvfl <- function(x, y, k = 5, repeats = 10,
                              "my_sd"))%op%
   {
    as.vector(compute_accuracy(x = x, y = y,
-                              nb_hidden = vec_nb_hidden[i],
+                              nb_hidden = nodes_clusters_df[i, 1],
+                              n_clusters = nodes_clusters_df[i, 2],
                               nodes_sim = nodes_sim, activ = activ,
-                              k = k,
-                              repeats = repeats,
+                              k = k, repeats = repeats,
                               lambda = lams, seed = seed))
   }
   close(pb)
   if(allowParallel) snow::stopCluster(cl_SOCK)
 
-  colnames(res) <- lams
-  rownames(res) <- vec_nb_hidden
-  return(res)
+  #colnames(res) <- lams
+  #rownames(res) <- vec_nb_hidden
+  best_index <- which(res == min(res),
+                      arr.ind = TRUE)
+
+  return(list(best_lam = lams[best_index[2]],
+              best_nb_hidden = nodes_clusters_df[best_index[1], 1],
+              best_n_clusters = nodes_clusters_df[best_index[1], 2],
+              objective = res[best_index[1], best_index[2]]))
 }
