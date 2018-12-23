@@ -32,6 +32,38 @@ find_lam_nbhidden <- function(x, y, vec_nb_hidden = 1:100, # was 1:100
               best_nb_hidden = vec_nb_hidden[best_coords[2]]))
 }
 
+# find regularization parameter and number of nodes with GCV
+find_lam_nbhidden_nclusters <- function(x, y,
+                              activ = c("relu", "sigmoid", "tanh"))
+{
+  activ <- match.arg(activ)
+
+  OF <- function(xx) bayesianrvfl::fit_rvfl(x = x, y = y,
+                                            lambda = xx[1],
+                                            nb_hidden = as.integer(xx[2]),
+                                            n_clusters = as.integer(xx[3]),
+                                            activ = activ)$GCV
+
+  minOF <- msnlminb(OF, nb_iter = 25,
+                    lower = c(1e-02, 2, 2),
+                    upper = c(1e04, 1000, 10))
+
+  # minOF <- DEoptim::DEoptim(fn = OF,
+  #                   lower = c(1e-02, 2, 2),
+  #                   upper = c(1e04, 1000, 10))
+
+  return(list(best_lambda = minOF$par[1],
+              best_nb_hidden = as.integer(minOF$par[2]),
+              best_n_clusters = as.integer(minOF$par[3]),
+              objective = minOF$objective,
+              convergence = minOF$convergence))
+
+  # return(list(best_lambda = minOF$optim$bestmem[1],
+  #             best_nb_hidden = as.integer(minOF$optim$bestmem[2]),
+  #             best_n_clusters = as.integer(minOF$optim$bestmem[3]),
+  #             objective = minOF$optim$bestval))
+}
+
 # check if the set of parameter has already been found by the algo
 param_is_found <- function(mat, vec)
 {

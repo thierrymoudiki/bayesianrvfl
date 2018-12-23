@@ -1,5 +1,5 @@
 
-
+# fitting base rvfl ----
 fit_rvfl <- function(x,
                      y,
                      nb_hidden = 5,
@@ -268,6 +268,72 @@ fit_rvfl <- function(x,
 
 }
 
+
+# fitting rvfl mcmc ----
+fit_rvfl_mcmc <- function(x, y, cl = NULL,
+                          nodes_sim = c("sobol", "halton", "unif"),
+                          activ = c("relu", "sigmoid", "tanh",
+                                     "leakyrelu", "elu", "linear"),
+                          method = c("svd", "chol"))
+{
+  lambda <- 10^seq(from = -5, to = 4,
+                   length.out = 50)
+  vec_nb_hidden <- c(c(5, 10, 25, 40, 50),
+                    floor(1000*randtoolbox::sobol(15)))
+  vec_n_clusters <- c(0, 2, 3, 4, 5)
+  nodes_clusters_df <- expand_grid_df(vec_nb_hidden, vec_n_clusters)
+  nb_iter <- nrow(nodes_clusters_df)
+  method <- match.arg(method)
+  nodes_sim <- match.arg(nodes_sim)
+  activ <- match.arg(activ)
+
+
+  allowParallel <- !is.null(cl) && cl > 0
+  if(allowParallel)
+  {
+    cl_SOCK <- parallel::makeCluster(cl, type = "SOCK")
+    doSNOW::registerDoSNOW(cl_SOCK)
+    #`%op%` <-  foreach::`%dopar%`
+
+    pb <- txtProgressBar(min = 0, max = nb_iter, style = 3)
+    progress <- function(n) utils::setTxtProgressBar(pb, n)
+    opts <- list(progress = progress)
+
+    res <- foreach::foreach(i = 1:nb_iter,
+                            .packages = "doSNOW",
+                            .options.snow = opts,
+                            .verbose = FALSE)%dopar%{
+                              bayesianrvfl::fit_rvfl(x = x, y = y,
+                                                     nb_hidden = nodes_clusters_df[i, 1],
+                                                     n_clusters = nodes_clusters_df[i, 2],
+                                                     nodes_sim = nodes_sim,
+                                                     activ = activ,
+                                                     lambda = lambda,
+                                                     method = method,
+                                                     compute_Sigma = FALSE)
+                            }
+    close(pb)
+  }  else {
+    #`%op%` <-  foreach::`%do%`
+    pb <- txtProgressBar(min = 0, max = nb_iter, style = 3)
+    res <- foreach::foreach(i = 1:nb_iter,
+                            .verbose = FALSE)%do%{
+                              setTxtProgressBar(pb, i)
+                              bayesianrvfl::fit_rvfl(x = x, y = y,
+                                                     nb_hidden = nodes_clusters_df[i, 1],
+                                                     n_clusters = nodes_clusters_df[i, 2],
+                                                     nodes_sim = nodes_sim,
+                                                     activ = activ,
+                                                     lambda = lambda,
+                                                     method = method,
+                                                     compute_Sigma = FALSE)
+                            }
+    close(pb)
+  }
+
+  return(res)
+}
+
 # fitting Matérn 5/2 model ----
 fit_matern52 <- function(x,
                          y,
@@ -326,6 +392,7 @@ fit_matern52 <- function(x,
   )
 
 }
+
 
 # fitting elastic net ----
 fit_glmnet <- function(x,
