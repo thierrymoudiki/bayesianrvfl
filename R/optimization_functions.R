@@ -1,14 +1,12 @@
 # 1 - multistart nlminb ---------------------------------------------------------------
 
-msnlminb <- function(objective,
-                     nb_iter = 100,
-                     lower,
-                     upper,
-                     cl = NULL,
+msnlminb <- function(objective, nb_iter = 100,
+                     lower, upper, cl = NULL,
                      ...)
 {
   ldots <- list(...)
-  OF <- function(u, ...){return(objective(u, ...))}
+  OF <- function(u, ...)
+    {return(objective(u, ...))}
 
   rep_1_nb_iter <- rep(1, nb_iter)
   lower_mat <- tcrossprod(rep_1_nb_iter, lower)
@@ -50,13 +48,19 @@ msnlminb <- function(objective,
 
     i <- j <- NULL
     res <- foreach::foreach(i = 1:nb_iter,
-                            .export = c("ldots"), .packages = "doSNOW",
-                            .options.snow = opts, .verbose = FALSE,
+                            .packages = "doSNOW",
+                            .options.snow = opts,
+                            .verbose = FALSE,
                             .errorhandling = "remove")%dopar%{ # fix this
 
-                              stats::nlminb(start = starting_points[i, ],
-                                            objective = OF, lower = lower,
-                                            upper = upper)
+                              stats::nlminb(
+                                start = starting_points[i, ],
+                                objective = OF,
+                                lower = lower,
+                                upper = upper,
+                                ...
+                              )
+
                             }
 
     stopCluster(cl_SOCK)
@@ -75,8 +79,7 @@ random_search_opt <- function(objective, nb_iter = 100,
                               lower, upper, sim = c("sobol", "unif"),
                               seed = 123, cl = NULL, ...)
 {
-  OF <- function(y)
-    objective(y, ...)
+  OF <- function(y, ...) {return(objective(y, ...))}
   rep_1_nb_iter <- rep(1, nb_iter)
   lower_mat <- tcrossprod(rep_1_nb_iter, lower)
   upper_mat <- tcrossprod(rep_1_nb_iter, upper)
