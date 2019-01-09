@@ -120,27 +120,25 @@ find_lam_nbhidden <- function(x, y, vec_nb_hidden = 1:100, # was 1:100
 }
 
 # find regularization parameter and number of nodes with GCV
-find_lam_nbhidden_nclusters <- function(x, y, cl = NULL,
+find_lam_nbhidden_nclusters <- function(x, y,
                                         nodes_sim = c("sobol", "halton", "unif"),
-                                        activ = c("relu", "sigmoid", "tanh"), ...)
+                                        activ = c("relu", "sigmoid", "tanh"))
 {
   nodes_sim <- match.arg(nodes_sim)
   activ <- match.arg(activ)
 
-  OF <- function(xx) bayesianrvfl::fit_rvfl(x = x, y = y,
-                                            lambda = xx[1],
-                                            nb_hidden = floor(xx[2]),
-                                            n_clusters = floor(xx[3]),
-                                            nodes_sim = nodes_sim,
-                                            activ = activ)$GCV
+  OF <- function(xx)
+  {return(bayesianrvfl::fit_rvfl(x = x, y = y,
+                                lambda = xx[1],
+                                nb_hidden = floor(xx[2]),
+                                n_clusters = floor(xx[3]),
+                                nodes_sim = nodes_sim,
+                                activ = activ)$GCV)}
   OF <- compiler::cmpfun(OF)
 
   minOF <- bayesianrvfl::msnlminb(objective = OF, nb_iter = 50,
                                   lower = c(0, 2, 2),
-                                  upper = c(1e05, 1000, 10),
-                                  cl = cl)
-  #3.924939e-14
-
+                                  upper = c(1e05, 1000, 10))
 
   return(list(best_lambda = minOF$par[1],
               best_nb_hidden = as.integer(minOF$par[2]),
