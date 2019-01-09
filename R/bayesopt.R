@@ -1,38 +1,27 @@
 
-
-
 # 1 - optimization functions ---------------------------------------------------------------
 
 # 1 - 1 bayesian optimization ---------------------------------------------------------------
 
 # abs(1-x(i)/x(i-1)) < relTol (1e-10) ||  abs(x(i)-x(i-1)) < absTol (1e-20)
 
-bayes_opt <- function(objective,
-                      lower,
-                      upper,
-                      type_acq = c("ei", "ucb"),
-                      kappa = 1.96,
-                      nb_init = 10,
-                      nb_iter = 25,
-                      method = c("standard", "direct_online",
-                                 "polyak_online"),
-                      # '*_online' available for rvfl only
-                      surrogate_model = c("rvfl", "matern52", "rf"),
-                      optim_surr = c("GCV", "loglik"),
-                      activation_function = c("relu", "tanh", "sigmoid"),
-                      type_optim = c("nlminb", "DEoptim",
-                                     "msnlminb"),
-                      early_stopping = FALSE,
-                      abs_tol = 1e-07,
-                      rel_tol = 1e-03,
-                      # currently only for method == 'direct_online'
-                      seed = 123,
-                      verbose = TRUE,
-                      show_progress = TRUE,
-                      ...)
+bayes_opt <- function(objective, # objective function
+                      lower, # lower bound for search
+                      upper, # upper bound for search
+                      type_acq = c("ei", "ucb"), # type of acquisition function
+                      nb_init = 10, # number of points in initial design
+                      nb_iter = 25, # number of iterations of the algo
+                      kappa = 1.96, # quantile for ucb
+                      method = c("standard", "direct_online", "polyak_online"), # fit all, or online # '*_online' available for rvfl only
+                      surrogate_model = c("rvfl", "matern52", "rf"), # surrogate model
+                      optim_surr = c("GCV", "loglik", "cv"), # surrogate hyperparams fitting
+                      activation_function = c("relu", "tanh", "sigmoid"), # activation for bayesian rvfl
+                      type_optim = c("nlminb", "DEoptim", "msnlminb"), # optim for acquisition
+                      early_stopping = FALSE, abs_tol = 1e-07, rel_tol = 1e-03, # currently only for method == 'direct_online'
+                      seed = 123, verbose = TRUE, show_progress = TRUE, ...)
 {
-  OF <- function(y)
-    objective(y, ...)
+  OF <- function(y) {return(objective(y, ...))}
+
   nb_is_found <- 0
   dim_xx <- length(lower)
   stopifnot(dim_xx == length(upper))
@@ -47,46 +36,38 @@ bayes_opt <- function(objective,
     optim_surr <- "loglik" # to me MODIFIED
 
   if (verbose == TRUE)
-  {
     cat("\n", "----- define initial design...", "\n")
-  }
+
 
   rep_1_nb_init <- rep(1, nb_init)
   lower_mat_init <- tcrossprod(rep_1_nb_init, lower)
   upper_mat_init <- tcrossprod(rep_1_nb_init, upper)
 
   set.seed(seed)
-  parameters <-
-    lower_mat_init + (upper_mat_init - lower_mat_init) * matrix(runif(nb_init *
-                                                                        dim_xx),
-                                                                nrow = nb_init, ncol = dim_xx)
+  parameters <- lower_mat_init + (upper_mat_init - lower_mat_init) * matrix(runif(nb_init *
+                                                                        dim_xx), nrow = nb_init,
+                                                                        ncol = dim_xx)
   scores <- apply(parameters, 1, OF)
-
   parameters <- as.matrix(parameters[!is.na(scores),])
   scores <- scores[!is.na(scores)]
 
   if (early_stopping == TRUE)
   {
+    # calculating the integrated acquisition function
     vec_acq <- rep(NA, nb_iter)
-    if (type_acq != "ei") {
-      type_acq <- "ei"
-      warning("type_acq set to 'ei'")
-    }
-    n_points_in_domain <-
-      1000 # for the calculation of integrated acquisition
-    rep_1_n_points_in_domain <- rep(1, n_points_in_domain)
-    lower_mat_points_in_domain <-
-      tcrossprod(rep_1_n_points_in_domain,
-                 lower)
-    upper_mat_points_in_domain <-
-      tcrossprod(rep_1_n_points_in_domain,
-                 upper)
-    # points for calculating the integrated acquisition function
-    points_in_domain <-
-      lower_mat_points_in_domain + (upper_mat_points_in_domain -
-                                      lower_mat_points_in_domain) *
-      randtoolbox::sobol(n = n_points_in_domain,
-                         dim = dim_xx) # for the calculation of integrated acquisition
+
+      if (type_acq != "ei") {
+        type_acq <- "ei"
+        warning("type_acq set to 'ei'")
+      }
+
+      n_points_in_domain <- 1000 # for the calculation of integrated acquisition
+      rep_1_n_points_in_domain <- rep(1, n_points_in_domain)
+      lower_mat_points_in_domain <- tcrossprod(rep_1_n_points_in_domain, lower)
+      upper_mat_points_in_domain <- tcrossprod(rep_1_n_points_in_domain, upper)
+      points_in_domain <- lower_mat_points_in_domain + (upper_mat_points_in_domain -
+                                        lower_mat_points_in_domain)*randtoolbox::sobol(n = n_points_in_domain,
+                                                                                       dim = dim_xx) # for the calculation of integrated acquisition
   }
 
   if (verbose == TRUE)
@@ -108,14 +89,12 @@ bayes_opt <- function(objective,
     if (surrogate_model == "rvfl")
     {
       best_params <- bayesianrvfl::min_loglik(
-        x = parameters,
-        y = scores,
-        surrogate_model = "rvfl",
-        nodes_sim = "sobol",
-        activ = activation_function
-      )
-      best_lam <- best_params$par[2]
+        x = parameters, y = scores,
+        surrogate_model = "rvfl", nodes_sim = "sobol",
+        activ = activation_function)
+
       best_nb_hidden <- floor(best_params$par[1])
+      best_lam <- best_params$par[2]
 
       if (verbose == TRUE)
       {
@@ -161,7 +140,7 @@ bayes_opt <- function(objective,
     }
   }
 
-  # method == "standard" ----------------------------------------------------
+  # method == "standard" - optimization ----------------------------------------------------
 
   if (method == "standard")
   {
@@ -171,61 +150,45 @@ bayes_opt <- function(objective,
       {
         if (is.vector(x))
           x <- matrix(x, nrow = 1)
-        pred_obj <-
-          bayesianrvfl::predict_rvfl(
-            bayesianrvfl::fit_rvfl(
-              x = parameters,
-              y = scores,
-              activ = activation_function,
-              nb_hidden = best_nb_hidden,
-              lambda = best_lam,
-              compute_Sigma = TRUE
-            ),
-            newx = x
-          )
+
+        pred_obj <- bayesianrvfl::predict_rvfl(
+            bayesianrvfl::fit_rvfl(x = parameters, y = scores,
+                                   activ = activation_function,
+                                    nb_hidden = best_nb_hidden,
+                                    lambda = best_lam,
+                                    compute_Sigma = TRUE), newx = x)
+
         mu_hat <- pred_obj$mean
         sigma_hat <- pred_obj$sd
-        cat("sigma_hat", "\n")
-        print(sigma_hat)
-        cat("\n")
         gamma_hat <- (min(scores) - mu_hat) / sigma_hat
-        res <-
-          -sigma_hat * (gamma_hat * pnorm(gamma_hat) + dnorm(gamma_hat))
+        res <- -sigma_hat * (gamma_hat * pnorm(gamma_hat) + dnorm(gamma_hat))
+
         return (ifelse(is.na(res), 1000, res))
       }
-      find_next_param_by_ei <-
-        compiler::cmpfun(find_next_param_by_ei)
+      find_next_param_by_ei <- compiler::cmpfun(find_next_param_by_ei)
 
       find_next_param_by_ucb <- function(x)
       {
         x <- matrix(x, nrow = 1)
-        pred_obj <-
-          bayesianrvfl::predict_rvfl(
-            bayesianrvfl::fit_rvfl(
-              x = parameters,
-              y = scores,
-              activ = activation_function,
-              nb_hidden = best_nb_hidden,
-              lambda = best_lam,
-              compute_Sigma = TRUE
-            ),
-            newx = x
-          )
+        pred_obj <- bayesianrvfl::predict_rvfl(
+            bayesianrvfl::fit_rvfl(x = parameters, y = scores,
+                                    activ = activation_function,
+                                    nb_hidden = best_nb_hidden,
+                                    lambda = best_lam,
+                                    compute_Sigma = TRUE), newx = x)
+
         return (-(pred_obj$mean - kappa * pred_obj$sd))
       }
-      find_next_param_by_ucb <-
-        compiler::cmpfun(find_next_param_by_ucb)
+      find_next_param_by_ucb <- compiler::cmpfun(find_next_param_by_ucb)
 
       find_next_param <- switch(type_acq,
                                 "ei" = find_next_param_by_ei,
                                 "ucb" = find_next_param_by_ucb)
 
-      if (verbose == FALSE && show_progress == TRUE)
-      {
-        pb <- txtProgressBar(min = 1,
-                             max = nb_iter,
-                             style = 3)
-      }
+        if (verbose == FALSE && show_progress == TRUE)
+        {
+          pb <- txtProgressBar(min = 1, max = nb_iter, style = 3)
+        }
 
       for (iter in 1:nb_iter)
       {
@@ -236,50 +199,36 @@ bayes_opt <- function(objective,
           cat("\n")
         }
 
+        # find next point to evaluate ----
         if (type_optim == "nlminb")
         {
           set.seed(iter + 1)
-          next_param <-
-            suppressWarnings(
-              stats::nlminb(
-                start = lower + (upper - lower) * runif(length(lower)),
+          next_param <- suppressWarnings(
+              stats::nlminb(start = lower + (upper - lower) * runif(length(lower)),
                 objective = find_next_param,
-                lower = lower,
-                upper = upper
-              )$par
-            )
+                lower = lower, upper = upper)$par)
         }
 
         if (type_optim == "msnlminb")
         {
-          next_param <-
-            suppressWarnings(
-              bayesianrvfl::msnlminb(
-                objective = find_next_param,
-                lower = lower,
-                upper = upper,
-                nb_iter = 10
-              )$par
-            )
+          next_param <- suppressWarnings(
+              bayesianrvfl::msnlminb(objective = find_next_param,
+                lower = lower, upper = upper,
+                nb_iter = 10)$par)
         }
 
         if (type_optim == "DEoptim")
         {
           next_param <-
             suppressWarnings(
-              DEoptim::DEoptim(
-                fn = find_next_param,
-                lower = lower,
-                upper = upper,
+              DEoptim::DEoptim(fn = find_next_param,
+                lower = lower, upper = upper,
                 control = DEoptim::DEoptim.control(
-                  trace = FALSE,
-                  parallelType = 0,
-                  itermax = 25
-                )
-              )$optim$bestmem
-            )
+                  trace = FALSE, parallelType = 0,
+                  itermax = 25))$optim$bestmem)
         }
 
+        # if already found before, search randomly for another one
         if (param_is_found(parameters, next_param) == TRUE)
         {
           nb_is_found <- nb_is_found + 1
@@ -287,21 +236,18 @@ bayes_opt <- function(objective,
           next_param <- lower + (upper - lower) * runif(dim_xx)
         }
 
+        current_score <- OF(next_param)
         if (verbose == TRUE)
         {
           cat("next_param", "\n")
           print(next_param)
           cat("\n")
-        }
-
-        current_score <- OF(next_param)
-        if (verbose == TRUE)
-        {
           cat("score", "\n")
           print(current_score)
           cat("\n")
         }
 
+        # update points found and scores
         parameters <- rbind(parameters, next_param)
         scores <- c(scores, current_score)
 
@@ -317,74 +263,57 @@ bayes_opt <- function(objective,
           cat("\n")
         }
 
-        if (verbose == FALSE &&
-            show_progress == TRUE)
+        if (verbose == FALSE && show_progress == TRUE)
           setTxtProgressBar(pb, iter)
       }
       if (verbose == FALSE && show_progress == TRUE)
         close(pb)
-
     } # end: if (surrogate_model == "rvfl")
 
     if (surrogate_model == "matern52")
     {
       find_next_param_by_ei <- function(x)
       {
+
         if (is.vector(x))
           x <- matrix(x, nrow = 1)
-        pred_obj <-
-          bayesianrvfl::predict_matern52(
-            bayesianrvfl::fit_matern52(
-              x = parameters,
-              y = scores,
-              sigma = best_sigma,
-              l = best_l,
-              lambda_krls = best_lam,
-              compute_Sigma = TRUE
-            ),
-            newx = x
-          )
-        mu_hat <- pred_obj$mean
-        sigma_hat <- pred_obj$sd
-        gamma_hat <- (min(scores) - mu_hat) / sigma_hat
-        res <-
-          -sigma_hat * (gamma_hat * pnorm(gamma_hat) + dnorm(gamma_hat))
+
+        pred_obj <- bayesianrvfl::predict_matern52(
+            bayesianrvfl::fit_matern52(x = parameters, y = scores,
+                                       sigma = best_sigma,
+                                       l = best_l,
+                                       lambda_krls = best_lam,
+                                       compute_Sigma = TRUE), newx = x)
+
+        gamma_hat <- (min(scores) - pred_obj$mean) / pred_obj$sd
+        res <- -pred_obj$sd * (gamma_hat * pnorm(gamma_hat) + dnorm(gamma_hat))
+
         return (ifelse(is.na(res), 1000, res))
       }
-      find_next_param_by_ei <-
-        compiler::cmpfun(find_next_param_by_ei)
+      find_next_param_by_ei <- compiler::cmpfun(find_next_param_by_ei)
 
       find_next_param_by_ucb <- function(x)
       {
         x <- matrix(x, nrow = 1)
-        pred_obj <-
-          bayesianrvfl::predict_matern52(
-            bayesianrvfl::fit_matern52(
-              x = parameters,
-              y = scores,
-              sigma = best_sigma,
-              l = best_l,
-              lambda_krls = best_lam,
-              compute_Sigma = TRUE
-            ),
-            newx = x
-          )
+        pred_obj <- bayesianrvfl::predict_matern52(
+                    bayesianrvfl::fit_matern52( x = parameters, y = scores,
+                    sigma = best_sigma,
+                    l = best_l,
+                    lambda_krls = best_lam,
+                    compute_Sigma = TRUE), newx = x)
+
         return (-(pred_obj$mean - kappa * pred_obj$sd))
       }
-      find_next_param_by_ucb <-
-        compiler::cmpfun(find_next_param_by_ucb)
+      find_next_param_by_ucb <- compiler::cmpfun(find_next_param_by_ucb)
 
       find_next_param <- switch(type_acq,
                                 "ei" = find_next_param_by_ei,
                                 "ucb" = find_next_param_by_ucb)
 
       if (verbose == FALSE && show_progress == TRUE)
-      {
-        pb <- txtProgressBar(min = 1,
-                             max = nb_iter,
-                             style = 3)
-      }
+        pb <- txtProgressBar(min = 1, max = nb_iter, style = 3)
 
+      # optimization loop -----
       for (iter in 1:nb_iter)
       {
         if (verbose == TRUE)
@@ -399,13 +328,8 @@ bayes_opt <- function(objective,
           set.seed(iter + 1)
           next_param <-
             suppressWarnings(
-              stats::nlminb(
-                start = lower + (upper - lower) * runif(length(lower)),
-                objective = find_next_param,
-                lower = lower,
-                upper = upper
-              )$par
-            )
+              stats::nlminb(start = lower + (upper - lower) * runif(length(lower)),
+                objective = find_next_param, lower = lower, upper = upper)$par)
         }
 
         if (type_optim == "msnlminb")
@@ -492,51 +416,33 @@ bayes_opt <- function(objective,
     } # end: if (surrogate_model == "matern52")
   }
 
-  # method == "direct_online" ----------------------------------------------------
+  # method == "direct_online" - optimization ----------------------------------------------------
 
   if (method == "direct_online")
   {
     if (surrogate_model == "rvfl")
     {
-      fit_obj <- bayesianrvfl::fit_rvfl(
-        x = parameters,
-        y = scores,
-        nb_hidden = best_nb_hidden,
-        activ = activation_function,
-        lambda = best_lam,
-        method = "chol",
-        compute_Sigma = TRUE
-      )
+      fit_obj <- bayesianrvfl::fit_rvfl(x = parameters, y = scores,
+                                        nb_hidden = best_nb_hidden,
+                                        activ = activation_function,
+                                        lambda = best_lam, method = "chol",
+                                        compute_Sigma = TRUE)
 
       find_next_param_by_ei <- function(x)
       {
         if (is.vector(x))
           x <- matrix(x, nrow = 1)
-        # pred_obj <- bayesianrvfl::predict_rvfl(bayesianrvfl::fit_rvfl(x = parameters, y = scores,
-        #                                                               activ = activation_function,
-        #                                                               nb_hidden = best_nb_hidden,
-        #                                                               lambda = best_lam,
-        #                                                               method = "chol",
-        #                                                               compute_Sigma = TRUE),
-        #                                        newx = x)
-        pred_obj <-
-          suppressWarnings(bayesianrvfl::predict_rvfl(fit_obj,
+
+        pred_obj <- suppressWarnings(bayesianrvfl::predict_rvfl(fit_obj,
                                                       newx = x))
         mu_hat <- pred_obj$mean
         sigma_hat <- pred_obj$sd
-        # cat("mu_hat", "\n")
-        # print(mu_hat)
-        # cat("\n")
-        cat("sigma_hat", "\n")
-        print(sigma_hat)
-        cat("\n")
         gamma_hat <- (min(scores) - mu_hat) / sigma_hat
-        res <-
-          -sigma_hat * (gamma_hat * pnorm(gamma_hat) + dnorm(gamma_hat))
-        return (ifelse(is.na(res), NA, res))
+        #res <- -sigma_hat * (gamma_hat * pnorm(gamma_hat) + dnorm(gamma_hat))
+        #return (ifelse(is.na(res), NA, res))
+        return (-sigma_hat * (gamma_hat * pnorm(gamma_hat) + dnorm(gamma_hat)))
       }
-      find_next_param_by_ei <-
-        compiler::cmpfun(find_next_param_by_ei)
+      find_next_param_by_ei <- compiler::cmpfun(find_next_param_by_ei)
 
       find_next_param_by_ucb <- function(x)
       {
@@ -545,19 +451,14 @@ bayes_opt <- function(objective,
                                                newx = x)
         return (-(pred_obj$mean - kappa * pred_obj$sd))
       }
-      find_next_param_by_ucb <-
-        compiler::cmpfun(find_next_param_by_ucb)
+      find_next_param_by_ucb <- compiler::cmpfun(find_next_param_by_ucb)
 
       find_next_param <- switch(type_acq,
                                 "ei" = find_next_param_by_ei,
                                 "ucb" = find_next_param_by_ucb)
 
       if (verbose == FALSE && show_progress == TRUE)
-      {
-        pb <- txtProgressBar(min = 1,
-                             max = nb_iter,
-                             style = 3)
-      }
+        pb <- txtProgressBar(min = 1, max = nb_iter, style = 3)
 
       if (early_stopping && verbose)
       {
@@ -581,8 +482,7 @@ bayes_opt <- function(objective,
         if (type_optim == "nlminb")
         {
           set.seed(iter + 1)
-          next_param <-
-            suppressWarnings(
+          next_param <- suppressWarnings(
               stats::nlminb(
                 start = lower + (upper - lower) * runif(length(lower)),
                 objective = find_next_param,
@@ -594,8 +494,7 @@ bayes_opt <- function(objective,
 
         if (type_optim == "msnlminb")
         {
-          next_param <-
-            suppressWarnings(
+          next_param <- suppressWarnings(
               bayesianrvfl::msnlminb(
                 objective = find_next_param,
                 lower = lower,
@@ -607,8 +506,7 @@ bayes_opt <- function(objective,
 
         if (type_optim == "DEoptim")
         {
-          next_param <-
-            suppressWarnings(
+          next_param <- suppressWarnings(
               DEoptim::DEoptim(
                 fn = find_next_param,
                 lower = lower,
@@ -629,16 +527,14 @@ bayes_opt <- function(objective,
           next_param <- lower + (upper - lower) * runif(dim_xx)
         }
 
+        current_score <- OF(next_param)
+
         if (verbose == TRUE)
         {
           cat("next_param", "\n")
           print(next_param)
           cat("\n")
-        }
 
-        current_score <- OF(next_param)
-        if (verbose == TRUE)
-        {
           cat("score", "\n")
           print(current_score)
           cat("\n")
@@ -683,12 +579,10 @@ bayes_opt <- function(objective,
           cat("\n")
         }
 
-        if (type_acq == "ei" &&
-            early_stopping == TRUE)
-          vec_acq[iter] <-
-          mean(find_next_param_by_ei(points_in_domain)) #numerical integration of a_{EI}(x; \theta)
-        if (type_acq == "ei" &&
-            early_stopping == TRUE && iter >= 3)
+        if (type_acq == "ei" && early_stopping == TRUE)
+          vec_acq[iter] <- mean(find_next_param_by_ei(points_in_domain)) #numerical integration of a_{EI}(x; \theta)
+
+        if (type_acq == "ei" && early_stopping == TRUE && iter >= 3)
         {
           opt_tols <- bayesianrvfl::calc_tol(vec_acq)
 
@@ -705,8 +599,7 @@ bayes_opt <- function(objective,
             cat("\n")
           }
           # early stopping
-          if (opt_tols$abs_tol <= abs_tol ||
-              opt_tols$rel_tol <= rel_tol)
+          if (opt_tols$abs_tol <= abs_tol ||opt_tols$rel_tol <= rel_tol)
             break
         }
 
@@ -722,10 +615,10 @@ bayes_opt <- function(objective,
           cat("\n")
         }
 
-        if (verbose == FALSE &&
-            show_progress == TRUE)
+        if (verbose == FALSE && show_progress == TRUE)
           setTxtProgressBar(pb, iter)
       } # end for loop
+
       if (verbose == FALSE && show_progress == TRUE)
         close(pb)
     }
@@ -757,7 +650,6 @@ bayes_opt <- function(objective,
                           nrow = length(fit_obj$coef))
       colnames(mat_coefs) <- 1:(nb_iter + 1)
       mat_coefs[, 1] <- fit_obj$coef
-      #current_coefs <- fit_obj$coef
 
       find_next_param_by_ei <- function(x)
       {
@@ -765,20 +657,11 @@ bayes_opt <- function(objective,
           x <- matrix(x, nrow = 1)
         pred_obj <- bayesianrvfl::predict_rvfl(fit_obj2,
                                                newx = x)
-        mu_hat <- pred_obj$mean
-        sigma_hat <- pred_obj$sd
-
-        cat("sigma_hat", "\n")
-        print(sigma_hat)
-        cat("\n")
-
-        gamma_hat <- (min(scores) - mu_hat) / sigma_hat
-        res <-
-          -sigma_hat * (gamma_hat * pnorm(gamma_hat) + dnorm(gamma_hat))
+        gamma_hat <- (min(scores) - pred_obj$mean) / pred_obj$sd
+        res <- -pred_obj$sd * (gamma_hat * pnorm(gamma_hat) + dnorm(gamma_hat))
         return (ifelse(is.na(res), 10000, res))
       }
-      find_next_param_by_ei <-
-        compiler::cmpfun(find_next_param_by_ei)
+      find_next_param_by_ei <- compiler::cmpfun(find_next_param_by_ei)
 
       find_next_param_by_ucb <- function(x)
       {
@@ -787,8 +670,7 @@ bayes_opt <- function(objective,
                                                newx = x)
         return (-(pred_obj$mean - kappa * pred_obj$sd))
       }
-      find_next_param_by_ucb <-
-        compiler::cmpfun(find_next_param_by_ucb)
+      find_next_param_by_ucb <- compiler::cmpfun(find_next_param_by_ucb)
 
       find_next_param <- switch(type_acq,
                                 "ei" = find_next_param_by_ei,
@@ -889,11 +771,7 @@ bayes_opt <- function(objective,
 
         fit_obj2 <- fit_obj
         mat_coefs[, (iter + 1)] <- fit_obj$coef
-        #current_coefs <- current_coefs + (fit_obj$coef - current_coefs)/(iter + 1)
-        #print(drop(current_coefs))
-        #print(rowSums(mat_coefs)/(iter + 1))
         fit_obj2$coef <- rowSums(mat_coefs) / (iter + 1)
-        #fit_obj2$coef <- current_coefs
 
         if (verbose == TRUE)
         {
@@ -927,8 +805,8 @@ bayes_opt <- function(objective,
 
   points_found <- cbind(parameters, scores)
   n_params <- ncol(parameters)
-  colnames(points_found) <-
-    c(paste0("param", 1:n_params), "score")
+  colnames(points_found) <- c(paste0("param", 1:n_params),
+                              "score")
 
   if (early_stopping == FALSE)
   {
@@ -943,84 +821,82 @@ bayes_opt <- function(objective,
     )
 
   } else {
-    return(
-      list(
-        index_min = index_min,
+
+    return(list(index_min = index_min,
         nb_is_found = nb_is_found,
         vec_acq = vec_acq,
         best_param = best_param,
         best_value = scores[index_min],
-        points_found = points_found
-      )
-    )
+        points_found = points_found))
 
   }
 }
 
 # 1 - 2 multistart nlminb ---------------------------------------------------------------
 
-msnlminb <-
-  function(objective,
-           nb_iter = 100,
-           lower,
-           upper,
-           cl = NULL,
-           ...)
+msnlminb <- function(objective,
+                     nb_iter = 100,
+                     lower,
+                     upper,
+                     cl = NULL,
+                     ...)
   {
-    OF <- function(y)
-      objective(y, ...)
+    ldots <- list(...)
+    OF <- function(u, ...){return(objective(u, ...))}
+
     rep_1_nb_iter <- rep(1, nb_iter)
     lower_mat <- tcrossprod(rep_1_nb_iter, lower)
     upper_mat <- tcrossprod(rep_1_nb_iter, upper)
 
-    starting_points <- lower_mat + (upper_mat -
-                                      lower_mat) * randtoolbox::sobol(n = nb_iter,
-                                                                      dim = length(lower))
+    starting_points <- lower_mat + (upper_mat - lower_mat)*randtoolbox::sobol(n = nb_iter,
+                                                                              dim = length(lower))
     nb_iter <- nrow(starting_points)
 
+    pb <- txtProgressBar(min = 0, max = nb_iter, style = 3)
+
     if (is.null(cl)) {
-      res <-
-        lapply(1:nb_iter, function (i)
-          nlminb(
+
+      res <- foreach::foreach(i = 1:nb_iter,
+                              .export = "ldots",
+                              .verbose = FALSE,
+                              .errorhandling = "remove")%do%{
+          setTxtProgressBar(pb, i)
+          stats::nlminb(
             start = starting_points[i, ],
             objective = OF,
             lower = lower,
             upper = upper,
             ...
-          ))
+          )
+        }
+      close(pb)
 
     } else {
+
       cl_SOCK <- parallel::makeCluster(cl, type = "SOCK")
       doSNOW::registerDoSNOW(cl_SOCK)
 
-      pb <- txtProgressBar(min = 0,
-                           max = nb_iter,
+      pb <- txtProgressBar(min = 0, max = nb_iter,
                            style = 3)
-      progress <- function(n)
-        utils::setTxtProgressBar(pb, n)
+
+      progress <- function(n) utils::setTxtProgressBar(pb, n)
       opts <- list(progress = progress)
 
-      i <- j <- NULL
-      res <- foreach::foreach(
-        i = 1:nb_iter,
-        .packages = "doSNOW",
-        .options.snow = opts,
-        .verbose = FALSE,
-        .errorhandling = "stop"
-      ) %dopar% {
-        opt <- nlminb(
-          start = starting_points[i, ],
-          objective = OF,
-          lower = lower,
-          upper = upper,
-          ...
-        )
-        opt
-      }
+        i <- j <- NULL
+        res <- foreach::foreach(i = 1:nb_iter,
+          .export = c("ldots"), .packages = "doSNOW",
+          .options.snow = opts, .verbose = FALSE,
+          .errorhandling = "remove")%dopar%{ # fix this
+
+          stats::nlminb(start = starting_points[i, ],
+                 objective = OF, lower = lower,
+                 upper = upper)
+        }
+
       stopCluster(cl_SOCK)
     }
 
-    index_opt <- which.min(sapply(1:nb_iter,
+    index_opt <- which.min(sapply(1:length(res),
                                   function (i)
                                     res[[i]]$objective))
 
@@ -1029,16 +905,10 @@ msnlminb <-
 
 # 1 - 3 random search ---------------------------------------------------------------
 
-random_search_opt <-
-  function(objective,
-           nb_iter = 100,
-           lower,
-           upper,
-           sim = c("sobol", "unif"),
-           seed = 123,
-           cl = NULL,
-           ...)
-  {
+random_search_opt <- function(objective, nb_iter = 100,
+                              lower, upper, sim = c("sobol", "unif"),
+                               seed = 123, cl = NULL, ...)
+{
     OF <- function(y)
       objective(y, ...)
     rep_1_nb_iter <- rep(1, nb_iter)
