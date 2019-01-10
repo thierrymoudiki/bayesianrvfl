@@ -27,3 +27,41 @@ NumericMatrix cbind_cpp(NumericMatrix x, NumericMatrix y)
 
   return res;
 }
+
+// [[Rcpp::export]]
+double l2_dist(NumericVector x, NumericVector y)
+{
+  unsigned long int n = x.size();
+
+  if (n != y.size()) {
+    ::Rf_error("you must have x.ncol() == y.size()");
+  }
+
+  double res = 0;
+
+  for(int i = 0; i < n; i++) {
+    res += pow(x(i) - y(i), 2);
+  }
+
+  return(sqrt(res));
+}
+
+// [[Rcpp::export]]
+NumericVector l2_distmat(NumericVector y, NumericMatrix x)
+{
+  unsigned long int n = x.nrow();
+  unsigned long int y_ncol = y.size();
+
+  if (x.ncol() != y_ncol) {
+    ::Rf_error("you must have x.ncol() == y.size()");
+  }
+
+  NumericVector res(n);
+
+     for(int i = 0; i < n; i++) {
+       res(i) = l2_dist(y, x(i, _));
+    }
+
+  return(res);
+}
+

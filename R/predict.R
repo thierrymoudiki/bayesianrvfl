@@ -1,9 +1,9 @@
-# predicting from an rvfl ----
-predict_rvfl <- function(fit_obj,
-                         newx,
-                         ci = NULL,
-                         graph = FALSE)
+# predict from an rvfl ----
+predict_rvfl <- function(fit_obj, newx,
+                         ci = NULL, graph = FALSE)
 {
+  newx <- as.matrix(newx)
+
   if (is.vector(newx))
     newx <- t(newx)
 
@@ -20,15 +20,11 @@ predict_rvfl <- function(fit_obj,
   } else {
     pred_clusters <- predict(
       fit_obj$clust_obj,
-      bayesianrvfl::my_scale(
-        newx,
+      bayesianrvfl::my_scale(newx,
         xm = fit_obj$clusters_scales$means,
-        xsd = fit_obj$clusters_scales$sds
-      )
-    )
+        xsd = fit_obj$clusters_scales$sds))
 
-    newX_clust <-
-      bayesianrvfl::one_hot_encode(pred_clusters$cluster,
+    newX_clust <- bayesianrvfl::one_hot_encode(pred_clusters$cluster,
                                    fit_obj$n_clusters)
 
     newx <- create_new_predictors(
@@ -80,15 +76,16 @@ predict_rvfl <- function(fit_obj,
     {
       i <- NULL
       `%op%` <-  foreach::`%do%`
-      std <- foreach::foreach(i = 1:nlambda, .combine = cbind) %op% {
-        I_p <- diag(p)
-        Sigma <-
-          I_p - solve(crossprod(scaled_newx) + lambda[i] * I_p) %*% crossprod(scaled_newx)
-        sqrt(diag(
-          tcrossprod(scaled_newx %*% Sigma,
-                     scaled_newx) + lambda * diag(n)
-        ))
-      }
+      std <-
+        foreach::foreach(i = 1:nlambda, .combine = cbind) %op% {
+          I_p <- diag(p)
+          Sigma <-
+            I_p - solve(crossprod(scaled_newx) + lambda[i] * I_p) %*% crossprod(scaled_newx)
+          sqrt(diag(
+            tcrossprod(scaled_newx %*% Sigma,
+                       scaled_newx) + lambda * diag(n)
+          ))
+        }
       colnames(std) <- lambda
       return (list(mean = res,
                    sd = std))
@@ -98,7 +95,83 @@ predict_rvfl <- function(fit_obj,
   }
 }
 
-# predicting from Matérn 5/2 model ----
+# predict from an rvfl mcmc ----
+
+predict_rvfl_mcmc <- function(fit_obj,
+                              newx,
+                              ci = NULL,
+                              graph = FALSE)
+{
+  if (is.vector(newx))
+    newx <- t(newx)
+
+  lambda <- fit_obj$obj[[1]]$lambda
+  nlambda <- length(lambda)
+  nb_iters <- length(fit_obj$obj)
+
+  res <- foreach::foreach(i = 1:nb_iters,
+                          .verbose = FALSE,
+                          .combine = cbind,
+                          .errorhandling = "stop",
+                          .packages='cclust')%do%{
+
+                            fit_obj_i <- fit_obj$obj[[i]]
+
+                            if (is.null(fit_obj_i$clust_obj))
+                            {
+                              augmented_newx <- create_new_predictors(
+                                  x = newx,
+                                  nb_hidden = fit_obj_i$nb_hidden,
+                                  nn_xm = fit_obj_i$nn_xm,
+                                  nn_scales = fit_obj_i$nn_scales,
+                                  activ = fit_obj_i$activ,
+                                  nodes_sim = fit_obj_i$nodes_sim)$predictors
+
+                            } else {
+
+                              pred_clusters <- predict(
+                                fit_obj_i$clust_obj,
+                                bayesianrvfl::my_scale(
+                                  newx,
+                                  xm = fit_obj_i$clusters_scales$means,
+                                  xsd = fit_obj_i$clusters_scales$sds
+                                )
+                              )
+
+                              newX_clust <-
+                                bayesianrvfl::one_hot_encode(pred_clusters$cluster,
+                                                             fit_obj_i$n_clusters)
+
+                              augmented_newx <- create_new_predictors(
+                                x = cbind(newx, newX_clust),
+                                nb_hidden = fit_obj_i$nb_hidden,
+                                nn_xm = fit_obj_i$nn_xm,
+                                nn_scales = fit_obj_i$nn_scales,
+                                activ = fit_obj_i$activ,
+                                nodes_sim = fit_obj_i$nodes_sim
+                                )$predictors
+                            }
+
+                            xm <- as.vector(fit_obj_i$xm)
+                            scales <- as.vector(fit_obj_i$scales)
+                            scaled_newx <- my_scale(x = as.matrix(augmented_newx),
+                                                    xm = xm,
+                                                    xsd = scales)
+
+                            drop(scaled_newx %*% as.matrix(fit_obj_i$coef) + fit_obj_i$ym)
+                          }
+
+  if (fit_obj$compute_Sigma)
+  {
+    return(list(mean = rowMeans(res),
+           sd = apply(res, 1, sd)))
+  } else {
+    return(rowMeans(res))
+  }
+
+}
+
+# predict from Matérn 5/2 model ----
 predict_matern52 <- function(fit_obj, newx, ci = NULL)
 {
   if (is.vector(newx))
@@ -131,7 +204,7 @@ predict_matern52 <- function(fit_obj, newx, ci = NULL)
       sapply(1:n_newx, function (i)
         matern52_kxy_cpp(
           x = X,
-          y = scaled_newx[i,],
+          y = scaled_newx[i, ],
           sigma = sigma,
           l = l
         ))
@@ -216,54 +289,3 @@ predict_glmnet <- function(fit_obj, newx, s = 0.1)
   }
 
 }
-
-# par(mfrow = c(2, 2))
-#
-# fit_obj <- bayesianrvfl::fit_glmnet(x = mtcars[,-1], y = mtcars[,1],
-#                                     nb_hidden = 50, compute_Sigma = TRUE)
-# preds <- predict_glmnet(fit_obj, newx = mtcars[,-1], s = 0.05)
-#
-# plot(preds$mean, ylim = c(0, 40), type = 'l')
-# lines(mtcars[,1], col = "blue")
-# lines(preds$mean - 1.96*preds$sd, col = "red")
-# lines(preds$mean + 1.96*preds$sd, col = "red")
-#
-#
-#
-# X <- longley[,-1]
-# y <- longley[,1]
-# fit_obj <- bayesianrvfl::fit_glmnet(x = X, y = y,
-#                                      nb_hidden = 100, compute_Sigma = TRUE)
-# preds <- predict_glmnet(fit_obj, newx = X, s = 0.05)
-#
-#  plot(preds$mean, ylim = c(50, 150), type = 'l')
-#  lines(y, col = "blue")
-#  lines(preds$mean - 1.96*preds$sd, col = "red")
-#  lines(preds$mean + 1.96*preds$sd, col = "red")
-#
-# set.seed(123)
-# n <- 25 ; p <- 2
-# X <- matrix(rnorm(n * p), n, p) # no intercept!
-# y <- rnorm(n)
-# fit_obj <- bayesianrvfl::fit_glmnet(x = X, y = y,
-#                                      nb_hidden = 200, alpha = 1, compute_Sigma = TRUE)
-# preds <- predict_glmnet(fit_obj, newx = X, s = 0.1)
-#
-#  plot(preds$mean, ylim = c(-2, 3), type = 'l')
-#  lines(y, col = "blue")
-#  lines(preds$mean - 1.96*preds$sd, col = "red")
-#  lines(preds$mean + 1.96*preds$sd, col = "red")
-#
-#
-# set.seed(225)
-# n <- 25 ; p <- 2
-# X <- matrix(rnorm(n * p), n, p) # no intercept!
-# y <- rnorm(n)
-# fit_obj <- bayesianrvfl::fit_glmnet(x = X, y = y,
-#                                      nb_hidden = 200, compute_Sigma = TRUE)
-# preds <- predict_glmnet(fit_obj, newx = X, s = 0.1)
-#
-#  plot(preds$mean, ylim = c(-2, 3), type = 'l')
-#  lines(y, col = "blue")
-#  lines(preds$mean - 1.96*preds$sd, col = "red")
-#  lines(preds$mean + 1.96*preds$sd, col = "red")

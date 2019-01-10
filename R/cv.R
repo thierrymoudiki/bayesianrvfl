@@ -136,9 +136,9 @@ find_lam_nbhidden_nclusters <- function(x, y,
                                 activ = activ)$GCV)}
   OF <- compiler::cmpfun(OF)
 
-  minOF <- bayesianrvfl::msnlminb(objective = OF, nb_iter = 50,
+  minOF <- bayesianrvfl::msnlminb(objective = OF, nb_iter = 100,
                                   lower = c(0, 2, 2),
-                                  upper = c(1e05, 1000, 10))
+                                  upper = c(1e05, 100, 10))
 
   return(list(best_lambda = minOF$par[1],
               best_nb_hidden = as.integer(minOF$par[2]),

@@ -17,3 +17,11 @@ cbind_cpp <- function(x, y) {
     .Call('_bayesianrvfl_cbind_cpp', PACKAGE = 'bayesianrvfl', x, y)
 }
 
+l2_dist <- function(x, y) {
+    .Call('_bayesianrvfl_l2_dist', PACKAGE = 'bayesianrvfl', x, y)
+}
+
+l2_distmat <- function(y, x) {
+    .Call('_bayesianrvfl_l2_distmat', PACKAGE = 'bayesianrvfl', y, x)
+}
+

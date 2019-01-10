@@ -150,14 +150,12 @@
 #                   lams = lams,
 #                   seed = 1, cl = 4)
 #
-#   coord_min <- which(res_cv == min(res_cv), arr.ind = TRUE)
-#   res_cv[coord_min[1], coord_min[2]]
-#   (best_nb_hidden <- vec_nb_hidden[coord_min[1]])
-#   (best_lam <- lams[coord_min[2]])
-#
 #   fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
-#                       nb_hidden = best_nb_hidden, lambda = best_lam,
+#                       nb_hidden = res_cv$best_nb_hidden,
+#                       lambda = res_cv$best_lam,
+#                       n_clusters = res_cv$best_n_clusters,
 #                       compute_Sigma = TRUE)
+#
 #   (preds <- predict_rvfl(fit_obj, newx = x[-train_index, ]))
 #
 #   sqrt(mean((preds$mean - y[-train_index])^2))
@@ -182,37 +180,6 @@
 # lines(1:nbyy, y[-train_index], lwd = 2)
 # lines(preds$mean, col = "blue", lwd = 2)
 
-# nodes_sim <- "halton"
-# activ <- "tanh"
-# lams <- 10^seq(-2, 2, length.out = 100)
-# vec_nb_hidden <- 1:10
-# res_cv <- cv_rvfl(x = x[train_index, ], y = y[train_index],
-#                   nodes_sim = nodes_sim, activ = activ,
-#                   k = 3, repeats = 10,
-#                   vec_nb_hidden = vec_nb_hidden,
-#                   lams = lams,
-#                   seed = 1, cl = 4)
-#
-#   coord_min <- which(res_cv == min(res_cv), arr.ind = TRUE)
-#   res_cv[coord_min[1], coord_min[2]]
-#   (best_nb_hidden <- vec_nb_hidden[coord_min[1]])
-#   (best_lam <- lams[coord_min[2]])
-
-# halton relu 3.673985
-# sobol relu 0.7814588
-# unif relu  2.500851
-# unif elu  2.502318
-# halton elu 3.673985
-# sobol elu 0.7846292
-# unif leakyrelu 2.505171
-# sobol leakyrelu 0.7832614
-# halton leakyrelu 3.673985
-# halton sigmoid 1.148266
-# sobol sigmoid 0.8781506
-# unif sigmoid 0.9351309
-# unif tanh 0.7586961
-# sobol tanh 0.6969438
-
 #
 # # 2 - Exemple SLC14 ---------------------------------------------------------
 #
@@ -235,16 +202,12 @@
 #                   lams = lams,
 #                   seed = 1, cl = 4)
 #
-# coord_min <- which(res_cv == min(res_cv), arr.ind = TRUE)
-# res_cv[coord_min[1], coord_min[2]]
-# (best_nb_hidden <- vec_nb_hidden[coord_min[1]])
-# (best_lam <- lams[coord_min[2]])
-# summary(y)
-#
 # fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
-#                     nb_hidden = best_nb_hidden, lambda = best_lam,
+#                     nb_hidden = res_cv$best_nb_hidden,
+#                     lambda = res_cv$best_lam,
+#                     n_clusters = res_cv$best_n_clusters,
 #                     compute_Sigma = TRUE)
-# (preds <- predict_rvfl(fit_obj, newx = x[-train_index, ]))
+# (preds <- predict_rvfl(fit_obj, newx = as.matrix(x[-train_index, ])))
 #
 # sqrt(mean((preds$mean - y[-train_index])^2))
 #
@@ -271,7 +234,7 @@
 #
 # # 2 - Exemple SLC14_2 ---------------------------------------------------------
 #
-#library(caret)
+# library(caret)
 # set.seed(123)
 # train_dat <- SLC14_2(250)
 #
@@ -322,9 +285,6 @@
 # polygon(xx, yy80, col = "gray60", border = FALSE)
 # lines(1:nbyy, y[-train_index], lwd = 2)
 # lines(preds$mean, col = "blue", lwd = 2)
-
-
-
 
 #
 #   # 3 - Exemple mtcars ---------------------------------------------------------
@@ -403,3 +363,203 @@
 # lines(x, upper_bound, col = 'blue')
 # lines(x, lower_bound, col = 'blue')
 #
+# fit emcee -----
+
+# library(MASS)
+#
+# par(mfrow=c(2, 3))
+#
+# set.seed(123)
+#
+# mtcars
+# data(mtcars)
+# train_index <- caret::createDataPartition(mtcars$mpg, p=0.8)[[1]]
+# obj <- fit_rvfl_mcmc(mtcars[train_index, -1],
+#                      mtcars$mpg[train_index], compute_Sigma = TRUE)
+# (pred_obj <- predict_rvfl_mcmc(obj,
+#                                newx = as.matrix(mtcars[-train_index,-1])))
+#
+# n_preds <- length(pred_obj$mean)
+# xx <- c(1:n_preds, rev(1:n_preds))
+# yy95 <- c(pred_obj$mean + 1.96*pred_obj$sd,
+#         rev(pred_obj$mean - 1.96*pred_obj$sd))
+# yy80 <- c(pred_obj$mean + 1.28*pred_obj$sd,
+#         rev(pred_obj$mean - 1.28*pred_obj$sd))
+# plot(xx, yy95, type = "n", main = "mtcars")
+# polygon(xx, yy95, col = "gray90", border = "gray90")
+# polygon(xx, yy80, col = "gray", border = "gray")
+# lines(1:n_preds, mtcars[-train_index, 1])
+# points(1:n_preds, mtcars[-train_index, 1], pch=20)
+# lines(1:n_preds, pred_obj$mean, col = 'red')
+# points(1:n_preds, pred_obj$mean, col = 'red', pch=20)
+#
+# # longley
+# longley # not the same as the S-PLUS dataset
+# names(longley)[1] <- "y"
+# train_index <- caret::createDataPartition(longley$y, p=0.75)[[1]]
+# obj <- fit_rvfl_mcmc(longley[train_index, -1],
+#                      longley$y[train_index], compute_Sigma = TRUE)
+# (pred_obj <- predict_rvfl_mcmc(obj,
+#                                newx = as.matrix(longley[-train_index, -1])))
+#
+#
+# n_preds <- length(pred_obj$mean)
+# xx <- c(1:n_preds, rev(1:n_preds))
+# yy95 <- c(pred_obj$mean + 1.96*pred_obj$sd,
+#           rev(pred_obj$mean - 1.96*pred_obj$sd))
+# yy80 <- c(pred_obj$mean + 1.28*pred_obj$sd,
+#           rev(pred_obj$mean - 1.28*pred_obj$sd))
+# plot(xx, yy95, type = "n", main = "longley")
+# polygon(xx, yy95, col = "gray90", border = "gray90")
+# polygon(xx, yy80, col = "gray", border = "gray")
+# lines(1:n_preds, longley[-train_index, 1])
+# points(1:n_preds, longley[-train_index, 1], pch=20)
+# lines(1:n_preds, pred_obj$mean, col = 'red')
+# points(1:n_preds, pred_obj$mean, col = 'red', pch=20)
+#
+# # quakes
+# data(quakes)
+#
+# train_index <- caret::createDataPartition(quakes[, 4], p=0.8)[[1]]
+# obj <- fit_rvfl_mcmc(quakes[train_index, -4],
+#                      quakes[train_index, 4],
+#                      compute_Sigma = TRUE, cl=4)
+# (pred_obj <- predict_rvfl_mcmc(obj,
+#                                newx = as.matrix(quakes[-train_index, -4])))
+#
+#
+# n_preds <- length(pred_obj$mean)
+# xx <- c(1:n_preds, rev(1:n_preds))
+# yy95 <- c(pred_obj$mean + 1.96*pred_obj$sd,
+#           rev(pred_obj$mean - 1.96*pred_obj$sd))
+# yy80 <- c(pred_obj$mean + 1.28*pred_obj$sd,
+#           rev(pred_obj$mean - 1.28*pred_obj$sd))
+# plot(xx, yy95, type = "n", main = "quakes",
+#      ylim = c(2, 8))
+# polygon(xx, yy95, col = "gray90", border = "gray90")
+# polygon(xx, yy80, col = "gray", border = "gray")
+# lines(1:n_preds, quakes[-train_index, 4])
+# lines(1:n_preds, pred_obj$mean, col = 'red')
+#
+# # Boston
+# data("Boston")
+#
+# train_index <- caret::createDataPartition(Boston[, 1], p=0.8)[[1]]
+#
+# obj <- fit_rvfl_mcmc(x = Boston[train_index, -1],
+#                      y = Boston[train_index, 1],
+#                      compute_Sigma = TRUE, cl=4)
+# (pred_obj <- predict_rvfl_mcmc(obj,
+#                                newx = as.matrix(Boston[-train_index, -1])))
+#
+#
+# n_preds <- length(pred_obj$mean)
+# xx <- c(1:n_preds, rev(1:n_preds))
+# yy95 <- c(pred_obj$mean + 1.96*pred_obj$sd,
+#           rev(pred_obj$mean - 1.96*pred_obj$sd))
+# yy80 <- c(pred_obj$mean + 1.28*pred_obj$sd,
+#           rev(pred_obj$mean - 1.28*pred_obj$sd))
+# plot(xx, yy95, type = "n", main = "Boston")
+# polygon(xx, yy95, col = "gray90", border = "gray90")
+# polygon(xx, yy80, col = "gray", border = "gray")
+# lines(1:n_preds, Boston[-train_index, 1])
+# lines(1:n_preds, pred_obj$mean, col = 'red')
+#
+#
+# data("UScrime")
+# train_index <- caret::createDataPartition(UScrime$y, p=0.8)[[1]]
+# obj <- fit_rvfl_mcmc(x = UScrime[train_index, -16],
+#                      y = UScrime[train_index, 16],
+#                      compute_Sigma = TRUE, cl=4)
+# (pred_obj <- predict_rvfl_mcmc(obj,
+#                                newx = as.matrix(UScrime[-train_index, -16])))
+#
+# n_preds <- length(pred_obj$mean)
+# xx <- c(1:n_preds, rev(1:n_preds))
+# yy95 <- c(pred_obj$mean + 1.96*pred_obj$sd,
+#         rev(pred_obj$mean - 1.96*pred_obj$sd))
+# yy80 <- c(pred_obj$mean + 1.28*pred_obj$sd,
+#           rev(pred_obj$mean - 1.28*pred_obj$sd))
+# plot(xx, yy95, type = "n", main = "UScrime")
+# polygon(xx, yy95, col = "gray90", border = "gray90")
+# polygon(xx, yy80, col = "gray", border = "gray")
+# lines(1:n_preds, UScrime[-train_index, 16], type = 'l')
+# points(1:n_preds, UScrime[-train_index, 16],  pch=20)
+# lines(1:n_preds, pred_obj$mean, col = 'red')
+# points(1:n_preds, pred_obj$mean, col = 'red', pch=20)
+#
+#
+# data("motors")
+# train_index <- caret::createDataPartition(motors$time, p=0.8)[[1]]
+# obj <- fit_rvfl_mcmc(x = motors[train_index, c(1, 3)],
+#                      y = motors$time[train_index],
+#                      compute_Sigma = TRUE, cl=4)
+# (pred_obj <- predict_rvfl_mcmc(obj,
+#                                newx = as.matrix(motors[-train_index, c(1, 3)])))
+#
+# n_preds <- length(pred_obj$mean)
+# xx <- c(1:n_preds, rev(1:n_preds))
+# yy95 <- c(pred_obj$mean + 1.96*pred_obj$sd,
+#           rev(pred_obj$mean - 1.96*pred_obj$sd))
+# yy80 <- c(pred_obj$mean + 1.28*pred_obj$sd,
+#           rev(pred_obj$mean - 1.28*pred_obj$sd))
+# plot(xx, yy95, type = "n", main = "motors")
+# polygon(xx, yy95, col = "gray90", border = "gray90")
+# polygon(xx, yy80, col = "gray", border = "gray")
+# lines(1:n_preds, motors[-train_index, 2], type = 'l')
+# points(1:n_preds, motors[-train_index, 2], pch=20)
+# lines(1:n_preds, pred_obj$mean, col = 'red')
+# points(1:n_preds, pred_obj$mean, col = 'red', pch=20)
+
+# fit glmnet -----
+
+# par(mfrow = c(2, 2))
+#
+# fit_obj <- bayesianrvfl::fit_glmnet(x = mtcars[,-1], y = mtcars[,1],
+#                                     nb_hidden = 50, compute_Sigma = TRUE)
+# preds <- predict_glmnet(fit_obj, newx = mtcars[,-1], s = 0.05)
+#
+# plot(preds$mean, ylim = c(0, 40), type = 'l')
+# lines(mtcars[,1], col = "blue")
+# lines(preds$mean - 1.96*preds$sd, col = "red")
+# lines(preds$mean + 1.96*preds$sd, col = "red")
+#
+#
+#
+# X <- longley[,-1]
+# y <- longley[,1]
+# fit_obj <- bayesianrvfl::fit_glmnet(x = X, y = y,
+#                                      nb_hidden = 100, compute_Sigma = TRUE)
+# preds <- predict_glmnet(fit_obj, newx = X, s = 0.05)
+#
+#  plot(preds$mean, ylim = c(50, 150), type = 'l')
+#  lines(y, col = "blue")
+#  lines(preds$mean - 1.96*preds$sd, col = "red")
+#  lines(preds$mean + 1.96*preds$sd, col = "red")
+#
+# set.seed(123)
+# n <- 25 ; p <- 2
+# X <- matrix(rnorm(n * p), n, p) # no intercept!
+# y <- rnorm(n)
+# fit_obj <- bayesianrvfl::fit_glmnet(x = X, y = y,
+#                                      nb_hidden = 200, alpha = 1, compute_Sigma = TRUE)
+# preds <- predict_glmnet(fit_obj, newx = X, s = 0.1)
+#
+#  plot(preds$mean, ylim = c(-2, 3), type = 'l')
+#  lines(y, col = "blue")
+#  lines(preds$mean - 1.96*preds$sd, col = "red")
+#  lines(preds$mean + 1.96*preds$sd, col = "red")
+#
+#
+# set.seed(225)
+# n <- 25 ; p <- 2
+# X <- matrix(rnorm(n * p), n, p) # no intercept!
+# y <- rnorm(n)
+# fit_obj <- bayesianrvfl::fit_glmnet(x = X, y = y,
+#                                      nb_hidden = 200, compute_Sigma = TRUE)
+# preds <- predict_glmnet(fit_obj, newx = X, s = 0.1)
+#
+#  plot(preds$mean, ylim = c(-2, 3), type = 'l')
+#  lines(y, col = "blue")
+#  lines(preds$mean - 1.96*preds$sd, col = "red")
+#  lines(preds$mean + 1.96*preds$sd, col = "red")

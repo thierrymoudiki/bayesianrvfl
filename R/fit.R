@@ -1,20 +1,21 @@
 
 # fitting base rvfl ----
-fit_rvfl <- function(x,
-                     y,
-                     nb_hidden = 5,
-                     n_clusters = 0,
+fit_rvfl <- function(x, y,
+                     nb_hidden = 5, n_clusters = 0,
                      nodes_sim = c("sobol", "halton", "unif"),
                      activ = c("relu", "sigmoid", "tanh",
                                "leakyrelu", "elu", "linear"),
-                     lambda = 10 ^ seq(from = -5,
-                                       to = 2,
+                     lambda = 10 ^ seq(from = -4,
+                                       to = 5,
                                        length.out = 100),
-                     method = c("svd", "chol"),
-                     compute_Sigma = FALSE)
+                     method = c("svd", "solve"),
+                     compute_Sigma = FALSE,
+                     seed = 123)
 {
   if (!is.null(dim(y)))
     stop("'y' must be a vector") # otherwise y - ym is not working
+
+  stopifnot(n_clusters == 0 || n_clusters > 1)
 
   ## regression ----
   stopifnot(nb_hidden > 0)
@@ -33,6 +34,7 @@ fit_rvfl <- function(x,
 
   if (n_clusters > 0)
   {
+    set.seed(seed)
     X_clust_obj <- cclust::cclust(x = init_x_scaled$res,
                                   centers = n_clusters)
     X_clust <- bayesianrvfl::one_hot_encode(X_clust_obj$cluster,
@@ -57,6 +59,8 @@ fit_rvfl <- function(x,
 
   X <- x_scaled$res
 
+  XTX <- crossprod(X)
+
   if (method == "svd")
   {
     # inspired from MASS::lm.ridge
@@ -74,11 +78,7 @@ fit_rvfl <- function(x,
       vt <- Xs$vt
       coef <- crossprod(vt, a)
       centered_y_hat <- X %*% coef
-      GCV <-
-        colSums((centered_y - centered_y_hat) ^ 2) / (n - colSums(matrix(d ^ 2 /
-                                                                           div,
-                                                                         nb_di))) ^
-        2
+      GCV <- colSums((centered_y - centered_y_hat) ^ 2) / (n - colSums(matrix(d^2/div, nb_di)))^2
 
       if (compute_Sigma == TRUE)
       {
@@ -86,9 +86,11 @@ fit_rvfl <- function(x,
         aX <- drop(d * rhsX) / div
         Sigma <- diag(ncol(X)) - crossprod(vt, aX)
         rownames(Sigma) <- colnames(X)
+
         return(
           list(
             coef = drop(coef),
+            #Dn = Dn,
             scales = x_scaled$xsd,
             Sigma = Sigma,
             lambda = lambda,
@@ -105,14 +107,18 @@ fit_rvfl <- function(x,
             activ = activ,
             fitted_values = drop(ym +  centered_y_hat),
             GCV = GCV,
-            compute_Sigma = compute_Sigma
+            compute_Sigma = compute_Sigma,
+            x = x,
+            y = y
           )
         )
       } else {
         #else: compute_Sigma == FALSE && nlambda == 1
+
         return(
           list(
             coef = drop(coef),
+            #Dn = Dn,
             scales = x_scaled$xsd,
             lambda = lambda,
             ym = ym,
@@ -128,29 +134,29 @@ fit_rvfl <- function(x,
             activ = activ,
             fitted_values = drop(ym +  centered_y_hat),
             GCV = GCV,
-            compute_Sigma = compute_Sigma
+            compute_Sigma = compute_Sigma,
+            x = x,
+            y = y
           )
         )
       }
-    } else {
-      #else: nlambda > 1
+    } else {#else: nlambda > 1
+
       coef <- crossprod(Xs$vt, a)
       colnames(coef) <- lambda
       centered_y_hat <- X %*% coef
       fitted_values <- drop(ym +  centered_y_hat)
       colnames(fitted_values) <- lambda
-      GCV <-
-        colSums((centered_y - centered_y_hat) ^ 2) / (n - colSums(matrix(d ^ 2 /
-                                                                           div,
-                                                                         nb_di))) ^
-        2
+      GCV <- colSums((centered_y - centered_y_hat)^2)/(n - colSums(matrix(d^2/div,
+                                                                         nb_di)))^2
 
       if (compute_Sigma == TRUE)
-        #compute_Sigma == TRUE && nlambda > 1
-      {
+      {#compute_Sigma == TRUE && nlambda > 1
+
         rhsX <- crossprod(Xs$u, X)
         `%op%` <-  foreach::`%do%`
         i <- NULL
+
         Sigma <- foreach::foreach(i = 1:nlambda) %op% {
           div_i <- d ^ 2 + rep(lambda[i], rep(nb_di, 1))
           aX_i <- drop(d * rhsX) / div_i
@@ -159,6 +165,7 @@ fit_rvfl <- function(x,
           Sigma
         }
         names(Sigma) <- lambda
+
         return(
           list(
             coef = drop(coef),
@@ -178,11 +185,12 @@ fit_rvfl <- function(x,
             activ = activ,
             fitted_values = fitted_values,
             GCV = GCV,
-            compute_Sigma = compute_Sigma
+            compute_Sigma = compute_Sigma,
+            x = x,
+            y = y
           )
         )
-      } else {
-        #else: compute_Sigma == FALSE && length(lambda) == 1
+      } else {#else: compute_Sigma == FALSE && length(lambda) == 1
 
         return(
           list(
@@ -202,16 +210,17 @@ fit_rvfl <- function(x,
             activ = activ,
             fitted_values = drop(ym +  centered_y_hat),
             GCV = GCV,
-            compute_Sigma = compute_Sigma
+            compute_Sigma = compute_Sigma,
+            x = x,
+            y = y
           )
         )
       }
     }
   }
 
-  if (method == "chol")
+  if (method == "solve")
   {
-    XTX <- crossprod(X)
 
     if (nlambda > 1)
     {
@@ -221,23 +230,24 @@ fit_rvfl <- function(x,
       names(Sigma) <- lambda
       coef <- foreach::foreach(i = 1:nlambda,
                                .combine = cbind) %do% {
-                                 Dn[[i]] <- chol2inv(chol(XTX + diag(
+                                 Dn[[i]] <- solve(XTX + diag(
                                    x = lambda[i],
                                    nrow = nrow(XTX)
-                                 ))) # Cn^{-1}
+                                 )) # Cn^{-1}
                                  Sigma[[i]] <-
                                    diag(ncol(X)) - Dn[[i]] %*% XTX # Sigma_n
                                  Dn[[i]] %*% crossprod(X, centered_y) # beta_n
                                }
       colnames(coef) <- lambda
       rownames(coef) <- colnames(x_scaled$res)
+
     } else {
-      Dn <- chol2inv(chol(XTX + diag(
-        x = lambda,
-        nrow = nrow(XTX)
-      ))) # Cn^{-1}
+
+      Dn <- solve(XTX + diag(x = lambda,
+        nrow = nrow(XTX))) # Cn^{-1}
       Sigma <- diag(ncol(X)) - Dn %*% XTX # Sigma_n
       coef <- Dn %*% crossprod(X, centered_y) # beta_n
+
     }
 
     return(
@@ -274,69 +284,74 @@ fit_rvfl_mcmc <- function(x, y, cl = NULL,
                           nodes_sim = c("sobol", "halton", "unif"),
                           activ = c("relu", "sigmoid", "tanh",
                                      "leakyrelu", "elu", "linear"),
-                          method = c("svd", "chol"))
+                          compute_Sigma = FALSE)
 {
   lambda <- 10^seq(from = -5, to = 4,
                    length.out = 50)
-  vec_nb_hidden <- c(c(5, 10, 25, 40, 50),
-                    floor(1000*randtoolbox::sobol(15)))
-  vec_n_clusters <- c(0, 2, 3, 4, 5)
+   vec_nb_hidden <- c(c(5, 10, 25, 40, 50),
+                      floor(1000*randtoolbox::sobol(15)))
+  vec_n_clusters <- c(2, 3, 4, 5, 6)
   nodes_clusters_df <- expand_grid_df(vec_nb_hidden, vec_n_clusters)
-  nb_iter <- nrow(nodes_clusters_df)
-  method <- match.arg(method)
+  nb_iters <- nrow(nodes_clusters_df)
   nodes_sim <- match.arg(nodes_sim)
   activ <- match.arg(activ)
 
 
   allowParallel <- !is.null(cl) && cl > 0
-  if(allowParallel)
-  {
-    cl_SOCK <- parallel::makeCluster(cl, type = "SOCK")
-    doSNOW::registerDoSNOW(cl_SOCK)
-    #`%op%` <-  foreach::`%dopar%`
 
-    pb <- txtProgressBar(min = 0, max = nb_iter, style = 3)
-    progress <- function(n) utils::setTxtProgressBar(pb, n)
-    opts <- list(progress = progress)
+    if(allowParallel)
+    {
+      cl_SOCK <- parallel::makeCluster(cl, type = "SOCK")
+      doSNOW::registerDoSNOW(cl_SOCK)
+      #`%op%` <-  foreach::`%dopar%`
 
-    res <- foreach::foreach(i = 1:nb_iter,
-                            .packages = "doSNOW",
-                            .options.snow = opts,
-                            .verbose = FALSE)%dopar%{
-                              bayesianrvfl::fit_rvfl(x = x, y = y,
-                                                     nb_hidden = nodes_clusters_df[i, 1],
-                                                     n_clusters = nodes_clusters_df[i, 2],
-                                                     nodes_sim = nodes_sim,
-                                                     activ = activ,
-                                                     lambda = lambda,
-                                                     method = method,
-                                                     compute_Sigma = FALSE)
-                            }
-    close(pb)
-  }  else {
-    #`%op%` <-  foreach::`%do%`
-    pb <- txtProgressBar(min = 0, max = nb_iter, style = 3)
-    res <- foreach::foreach(i = 1:nb_iter,
-                            .verbose = FALSE)%do%{
-                              setTxtProgressBar(pb, i)
-                              bayesianrvfl::fit_rvfl(x = x, y = y,
-                                                     nb_hidden = nodes_clusters_df[i, 1],
-                                                     n_clusters = nodes_clusters_df[i, 2],
-                                                     nodes_sim = nodes_sim,
-                                                     activ = activ,
-                                                     lambda = lambda,
-                                                     method = method,
-                                                     compute_Sigma = FALSE)
-                            }
-    close(pb)
-  }
+      pb <- txtProgressBar(min = 0, max = nb_iters, style = 3)
+      progress <- function(n) utils::setTxtProgressBar(pb, n)
+      opts <- list(progress = progress)
 
-  return(res)
+      res <- foreach::foreach(i = 1:nb_iters,
+                              .packages = "doSNOW",
+                              .options.snow = opts,
+                              .errorhandling = "remove",
+                              .verbose = FALSE)%dopar%{
+
+                                bayesianrvfl::fit_rvfl(x = x, y = y,
+                                                       nb_hidden = nodes_clusters_df[i, 1],
+                                                       n_clusters = nodes_clusters_df[i, 2],
+                                                       nodes_sim = nodes_sim,
+                                                       activ = activ,
+                                                       lambda = lambda,
+                                                       method = "svd",
+                                                       compute_Sigma = FALSE)
+                              }
+      close(pb)
+    }  else {
+      #`%op%` <-  foreach::`%do%`
+      pb <- txtProgressBar(min = 0, max = nb_iters, style = 3)
+      res <- foreach::foreach(i = 1:nb_iters,
+                              .verbose = FALSE,
+                              .errorhandling = "remove")%do%{
+
+                                setTxtProgressBar(pb, i)
+                                bayesianrvfl::fit_rvfl(x = x, y = y,
+                                                       nb_hidden = nodes_clusters_df[i, 1],
+                                                       n_clusters = nodes_clusters_df[i, 2],
+                                                       nodes_sim = nodes_sim,
+                                                       activ = activ,
+                                                       lambda = lambda,
+                                                       method = "svd",
+                                                       compute_Sigma = FALSE)
+                              }
+      close(pb)
+    }
+
+  return(list(obj = res,
+              compute_Sigma = compute_Sigma))
 }
 
+
 # fitting Matérn 5/2 model ----
-fit_matern52 <- function(x,
-                         y,
+fit_matern52 <- function(x, y,
                          sigma = 2,
                          l = 0.1,
                          lambda_krls = 0.1,
@@ -362,9 +377,7 @@ fit_matern52 <- function(x,
                                       l = l)
   mat_coefs <- switch(
     inv_method,
-    "chol" = chol2inv(chol(K + lambda_krls * diag(nrow(
-      K
-    )))) %*% centered_y,
+    "chol" = chol2inv(chol(K + lambda_krls * diag(nrow(K)))) %*% centered_y,
     "ginv" = my_ginv(K + lambda_krls * diag(nrow(K))) %*% centered_y
   )
 
@@ -395,8 +408,7 @@ fit_matern52 <- function(x,
 
 
 # fitting elastic net ----
-fit_glmnet <- function(x,
-                       y,
+fit_glmnet <- function(x, y,
                        nb_hidden = 5,
                        nodes_sim = c("sobol", "halton", "unif"),
                        activ = c("relu", "sigmoid", "tanh",
@@ -490,26 +502,3 @@ fit_glmnet <- function(x,
   }
 
 }
-
-
-# sigmoid <- function(x) exp(x)/(1 + exp(x))
-# n_iris <- nrow(iris)
-# index_train <- sort(sample(1:n_iris, size = floor(0.8*n_iris)))
-# x_train <- as.matrix(iris[index_train, 1:4])
-# X_train <- cbind(1, x_train)
-# y_train <- factor_to_matrix(iris$Species[index_train])
-# fit_lm <- .lm.fit(x = X_train, y = y_train)
-#
-# x_test <- as.matrix(iris[-index_train, 1:4])
-# X_test <- cbind(1, x_test)
-# yhat <- X_test%*%fit_lm$coefficients
-# preds <- sapply(1:3, function (i) as.numeric(yhat[,i] > 0.5))
-# colnames(preds) <- colnames(y_test)
-# rownames(preds) <- 1:nrow(preds)
-# probs <- sigmoid(yhat)
-# y_test <- factor_to_matrix(iris$Species[-index_train])
-#
-#
-# colMeans(y_test == preds)
-#
-#

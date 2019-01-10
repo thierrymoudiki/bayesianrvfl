@@ -55,12 +55,38 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// l2_dist
+double l2_dist(NumericVector x, NumericVector y);
+RcppExport SEXP _bayesianrvfl_l2_dist(SEXP xSEXP, SEXP ySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    rcpp_result_gen = Rcpp::wrap(l2_dist(x, y));
+    return rcpp_result_gen;
+END_RCPP
+}
+// l2_distmat
+NumericVector l2_distmat(NumericVector y, NumericMatrix x);
+RcppExport SEXP _bayesianrvfl_l2_distmat(SEXP ySEXP, SEXP xSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type y(ySEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type x(xSEXP);
+    rcpp_result_gen = Rcpp::wrap(l2_distmat(y, x));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_bayesianrvfl_l2_norm", (DL_FUNC) &_bayesianrvfl_l2_norm, 1},
     {"_bayesianrvfl_matern52_kxx_cpp", (DL_FUNC) &_bayesianrvfl_matern52_kxx_cpp, 3},
     {"_bayesianrvfl_matern52_kxy_cpp", (DL_FUNC) &_bayesianrvfl_matern52_kxy_cpp, 4},
     {"_bayesianrvfl_cbind_cpp", (DL_FUNC) &_bayesianrvfl_cbind_cpp, 2},
+    {"_bayesianrvfl_l2_dist", (DL_FUNC) &_bayesianrvfl_l2_dist, 2},
+    {"_bayesianrvfl_l2_distmat", (DL_FUNC) &_bayesianrvfl_l2_distmat, 2},
     {NULL, NULL, 0}
 };
 
