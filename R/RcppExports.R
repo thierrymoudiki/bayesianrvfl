@@ -25,3 +25,7 @@ l2_distmat <- function(y, x) {
     .Call('_bayesianrvfl_l2_distmat', PACKAGE = 'bayesianrvfl', y, x)
 }
 
+one_hot_encode_cpp <- function(x_clusters, n_clusters) {
+    .Call('_bayesianrvfl_one_hot_encode_cpp', PACKAGE = 'bayesianrvfl', x_clusters, n_clusters)
+}
+

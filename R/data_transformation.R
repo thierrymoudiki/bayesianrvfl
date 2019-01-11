@@ -158,3 +158,49 @@ my_ginv <- function(X, tol = sqrt(.Machine$double.eps))
   }
 }
 my_ginv <- compiler::cmpfun(my_ginv)
+
+
+# one-hot-encoding of vector x_clusters on n_clusters -----------------------------------------------------
+
+# to be used, in case on clusters is not represented (e.g in predict)
+# keep n_clusters!
+one_hot_encode <- function(x_clusters, n_clusters)
+{
+  stopifnot(max(x_clusters) <= n_clusters)
+  n_obs <- length(x_clusters)
+
+  # matrix of results
+  res <- matrix(0, nrow = n_obs,
+                ncol = n_clusters)
+
+  for (i in 1:n_obs){
+    res[i, x_clusters[i]] <- 1
+  }
+
+  return (res)
+}
+
+
+# convert a factor to a matrix of responses -----------------------------------------------------
+
+# to be used on a training set
+factor_to_matrix <- function(x)
+{
+  if (!is.factor(x)) x <- as.factor(x)
+
+  levels_x <- sort(unique(x))
+  n_levels_x <- length(levels_x)
+  n <- length(x)
+  res <- matrix(NA, nrow = n,
+                ncol = n_levels_x)
+
+    for (i in 1:n)
+    {
+      res[i, ] <- as.numeric(x[i] == levels_x)
+    }
+
+  colnames(res) <- levels(x)
+  rownames(res) <- 1:n
+
+  return(res)
+}

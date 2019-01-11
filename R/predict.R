@@ -2,8 +2,6 @@
 predict_rvfl <- function(fit_obj, newx,
                          ci = NULL, graph = FALSE)
 {
-  newx <- as.matrix(newx)
-
   if (is.vector(newx))
     newx <- t(newx)
 
@@ -17,14 +15,20 @@ predict_rvfl <- function(fit_obj, newx,
       activ = fit_obj$activ,
       nodes_sim = fit_obj$nodes_sim
     )$predictors
-  } else {
-    pred_clusters <- predict(
-      fit_obj$clust_obj,
-      bayesianrvfl::my_scale(newx,
-        xm = fit_obj$clusters_scales$means,
-        xsd = fit_obj$clusters_scales$sds))
 
-    newX_clust <- bayesianrvfl::one_hot_encode(pred_clusters$cluster,
+  } else { # !is.null(fit_obj$clust_obj)
+
+    # scaled_x <- bayesianrvfl::my_scale(fit_obj$x,
+    #                                    xm = fit_obj$clusters_scales$means,
+    #                                    xsd = fit_obj$clusters_scales$sds)
+
+    scaled_newx <- bayesianrvfl::my_scale(newx,
+                             xm = fit_obj$clusters_scales$means,
+                             xsd = fit_obj$clusters_scales$sds)
+
+    pred_clusters <- predict(fit_obj$clust_obj, scaled_newx)
+
+    newX_clust <- bayesianrvfl::one_hot_encode_cpp(pred_clusters$cluster,
                                    fit_obj$n_clusters)
 
     newx <- create_new_predictors(
@@ -67,8 +71,11 @@ predict_rvfl <- function(fit_obj, newx,
                                 scaled_newx) + lambda * diag(n)
                    ))))
     } else {
+
       return (res)
+
     }
+
   } else {
     # nlambda > 1
 
@@ -90,7 +97,9 @@ predict_rvfl <- function(fit_obj, newx,
       return (list(mean = res,
                    sd = std))
     } else {
+
       return (res)
+
     }
   }
 }
@@ -139,7 +148,7 @@ predict_rvfl_mcmc <- function(fit_obj,
                               )
 
                               newX_clust <-
-                                bayesianrvfl::one_hot_encode(pred_clusters$cluster,
+                                bayesianrvfl::one_hot_encode_cpp(pred_clusters$cluster,
                                                              fit_obj_i$n_clusters)
 
                               augmented_newx <- create_new_predictors(

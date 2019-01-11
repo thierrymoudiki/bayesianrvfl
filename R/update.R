@@ -104,62 +104,7 @@ update_params <- function(fit_obj,
 
     Dn <- fit_obj$Dn # Cn^{-1}
 
-  } else {
-
-    init_x_scaled <- bayesianrvfl::my_scale(fit_obj$x)
-    X_clust_obj <- NULL
-
-    if (fit_obj$n_clusters > 0)
-    {
-      X_clust_obj <- cclust::cclust(x = init_x_scaled$res,
-                                    centers = fit_obj$n_clusters)
-      X_clust <- bayesianrvfl::one_hot_encode(X_clust_obj$cluster,
-                                              fit_obj$n_clusters)
-      list_xreg <- create_new_predictors(
-        x = cbind(fit_obj$x, X_clust),
-        nb_hidden = fit_obj$nb_hidden,
-        nodes_sim = fit_obj$nodes_sim,
-        activ = fit_obj$activ
-      )
-      x_scaled <- my_scale(list_xreg$predictors)
-    } else {
-      # if (n_clusters <= 0)
-      list_xreg <- create_new_predictors(
-        x = fit_obj$x,
-        nb_hidden = fit_obj$nb_hidden,
-        nodes_sim = fit_obj$nodes_sim,
-        activ = fit_obj$activ
-      )
-      x_scaled <- my_scale(list_xreg$predictors)
-    }
-
-    X <- x_scaled$res
-
-    XTX <- crossprod(X)
-
-    if (nlambda > 1)
-    {
-
-      Dn <- lapply(1:nlambda, function (i)
-         solve(XTX + diag(x = fit_obj$lambda[i], nrow = nrow(XTX)))
-        )
-      names(Dn) <- fit_obj$lambda
-
-      fit_obj$Dn <- Dn
-
-    } else {
-
-      Dn <- solve(XTX + diag(x = fit_obj$lambda,
-                        nrow = nrow(XTX))) # Cn^{-1}
-
-      fit_obj$Dn <- Dn
-    }
   }
-
-  # cat("Dn", "\n")
-  # print(Dn)
-  # cat("\n")
-
   ym <- fit_obj$ym
   xm <- as.vector(fit_obj$xm)
   scales <- as.vector(fit_obj$scales)
@@ -195,7 +140,7 @@ update_params <- function(fit_obj,
     #print("here3")
 
     newX_clust <-
-      bayesianrvfl::one_hot_encode(pred_clusters$cluster,
+      bayesianrvfl::one_hot_encode_cpp(pred_clusters$cluster,
                                    fit_obj$n_clusters)
 
     #print("here4")
@@ -260,12 +205,9 @@ update_params <- function(fit_obj,
     } else {
       # nlambda == 1
       # update factor
-      temp <-
-        tcrossprod(Dn, scaled_augmented_newx) # Cn^{-1}%*%(t(mat_newx))
-      update_factor <-
-        Dn - tcrossprod(temp) / (1 + drop(scaled_augmented_newx %*% temp))
-      resids <-
-        drop(centered_newy - scaled_augmented_newx %*% fit_obj$coef)
+      temp <- tcrossprod(Dn, scaled_augmented_newx) # Cn^{-1}%*%(t(mat_newx))
+      update_factor <- Dn - tcrossprod(temp) / (1 + drop(scaled_augmented_newx %*% temp))
+      resids <- drop(centered_newy - scaled_augmented_newx %*% fit_obj$coef)
 
       # update regression coefficients and covariance with update factor
       gradients <- as.vector(scaled_augmented_newx * resids)
@@ -351,7 +293,7 @@ update_params <- function(fit_obj,
       )
     )
 
-    X_clust <- bayesianrvfl::one_hot_encode(X_clust_obj$cluster,
+    X_clust <- bayesianrvfl::one_hot_encode_cpp(X_clust_obj$cluster,
                                             fit_obj$n_clusters)
 
     list_xreg <-

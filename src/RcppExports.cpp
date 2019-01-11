@@ -79,6 +79,18 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// one_hot_encode_cpp
+NumericMatrix one_hot_encode_cpp(NumericVector x_clusters, unsigned long int n_clusters);
+RcppExport SEXP _bayesianrvfl_one_hot_encode_cpp(SEXP x_clustersSEXP, SEXP n_clustersSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x_clusters(x_clustersSEXP);
+    Rcpp::traits::input_parameter< unsigned long int >::type n_clusters(n_clustersSEXP);
+    rcpp_result_gen = Rcpp::wrap(one_hot_encode_cpp(x_clusters, n_clusters));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_bayesianrvfl_l2_norm", (DL_FUNC) &_bayesianrvfl_l2_norm, 1},
@@ -87,6 +99,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_bayesianrvfl_cbind_cpp", (DL_FUNC) &_bayesianrvfl_cbind_cpp, 2},
     {"_bayesianrvfl_l2_dist", (DL_FUNC) &_bayesianrvfl_l2_dist, 2},
     {"_bayesianrvfl_l2_distmat", (DL_FUNC) &_bayesianrvfl_l2_distmat, 2},
+    {"_bayesianrvfl_one_hot_encode_cpp", (DL_FUNC) &_bayesianrvfl_one_hot_encode_cpp, 2},
     {NULL, NULL, 0}
 };
 

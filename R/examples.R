@@ -392,8 +392,8 @@
 # points(1:n_preds, mtcars[-train_index, 1], pch=20)
 # lines(1:n_preds, pred_obj$mean, col = 'red')
 # points(1:n_preds, pred_obj$mean, col = 'red', pch=20)
-#
-# # longley
+# #
+# # # longley
 # longley # not the same as the S-PLUS dataset
 # names(longley)[1] <- "y"
 # train_index <- caret::createDataPartition(longley$y, p=0.75)[[1]]
@@ -416,14 +416,14 @@
 # points(1:n_preds, longley[-train_index, 1], pch=20)
 # lines(1:n_preds, pred_obj$mean, col = 'red')
 # points(1:n_preds, pred_obj$mean, col = 'red', pch=20)
-#
-# # quakes
-# data(quakes)
-#
+# #
+# # # quakes
+# # data(quakes)
+# #
 # train_index <- caret::createDataPartition(quakes[, 4], p=0.8)[[1]]
 # obj <- fit_rvfl_mcmc(quakes[train_index, -4],
 #                      quakes[train_index, 4],
-#                      compute_Sigma = TRUE, cl=4)
+#                      compute_Sigma = TRUE)
 # (pred_obj <- predict_rvfl_mcmc(obj,
 #                                newx = as.matrix(quakes[-train_index, -4])))
 #

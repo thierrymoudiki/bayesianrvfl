@@ -37,7 +37,7 @@ fit_rvfl <- function(x, y,
     set.seed(seed)
     X_clust_obj <- cclust::cclust(x = init_x_scaled$res,
                                   centers = n_clusters)
-    X_clust <- bayesianrvfl::one_hot_encode(X_clust_obj$cluster,
+    X_clust <- bayesianrvfl::one_hot_encode_cpp(X_clust_obj$cluster,
                                             n_clusters)
     list_xreg <- create_new_predictors(
       x = cbind(x, X_clust),
@@ -310,7 +310,7 @@ fit_rvfl_mcmc <- function(x, y, cl = NULL,
       opts <- list(progress = progress)
 
       res <- foreach::foreach(i = 1:nb_iters,
-                              .packages = "doSNOW",
+                              .packages = c("doSNOW", "Rcpp"),
                               .options.snow = opts,
                               .errorhandling = "remove",
                               .verbose = FALSE)%dopar%{

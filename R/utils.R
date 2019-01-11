@@ -1,20 +1,3 @@
-# one-hot-encoding of vector x_clusters on n_clusters
-one_hot_encode <- function(x_clusters, n_clusters)
-{
-  stopifnot(max(x_clusters) <= n_clusters)
-  n_obs <- length(x_clusters)
-
-  # matrix of results
-  res <- matrix(0, nrow = n_obs,
-                ncol = n_clusters)
-
-    for (i in 1:n_obs){
-      res[i, x_clusters[i]] <- 1
-    }
-
-  return (res)
-}
-
 # check if the set of parameter has already been found by the algo
 param_is_found <- function(mat, vec)
 {
@@ -247,27 +230,6 @@ initial_design <- function(x, y, # x = covariates, y = response
 
 }
 
-# convert a factor to a matrix of responses
-factor_to_matrix <- function(x)
-{
-  if (!is.factor(x)) x <- as.factor(x)
-  levels_x <- unique(x)
-  n_levels_x <- length(levels_x)
-  n <- length(x)
-  res <- matrix(NA, nrow = n,
-                ncol = n_levels_x)
-
-    for (j in 1:n_levels_x)
-    {
-      res[, j] <- as.numeric(x == levels_x[j])
-    }
-
-  colnames(res) <- levels(x)
-  rownames(res) <- 1:n
-
-  return(res)
-}
-
 # calculate tolerance
 calc_tol <- function(acq)
 {
@@ -290,13 +252,14 @@ resample <- function(x, seed = 123)
   return(x[sample(1:n, size = n, replace = TRUE),])
 }
 
-# l2 dist mat
-l2_distmat_r <- function(y, X)
-{
-  n <- nrow(X)
-
-  stopifnot(length(y) == ncol(X))
-
-  return(sapply(1:n,
-                function (i) sqrt(sum((y - X[i, ])^2))))
-}
+# # l2 dist mat
+# l2_distmat_r <- function(y, X)
+# {
+#   n <- nrow(X)
+#
+#   stopifnot(length(y) == ncol(X))
+#
+#   # return(sapply(1:n,
+#   #               function (i) sqrt(sum((y - X[i, ])^2))))
+#   return(sqrt(rowSums((t(tcrossprod(y, rep(1, n))) - X)^2)))
+# }

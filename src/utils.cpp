@@ -65,3 +65,24 @@ NumericVector l2_distmat(NumericVector y, NumericMatrix x)
   return(res);
 }
 
+// [[Rcpp::export]]
+NumericMatrix one_hot_encode_cpp(NumericVector x_clusters, unsigned long int n_clusters)
+{
+
+  // if (max(x_clusters) != n_clusters) {
+  //   ::Rf_error("max(x_clusters) != n_clusters");
+  // }
+
+  unsigned long int n_obs = x_clusters.size();
+
+  // matrix of results
+  NumericMatrix res(n_obs, n_clusters);
+
+  for(int i = 0; i < n_obs; i++) {
+      res(i, x_clusters(i)-1) = 1;
+    }
+
+    return (res);
+}
+
+
