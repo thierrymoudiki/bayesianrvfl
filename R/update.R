@@ -32,11 +32,11 @@
 #                  pred_obj3$sd[index_sd], pred_obj4$sd[index_sd],
 #                  pred_obj5$sd[index_sd], pred_obj6$sd[index_sd])
 #  colnames(mat_sds) <- paste0("pred", 1:ncol(mat_sds))
+# #
+# # #
+# # # 1 - plots -----
+# # #
 #
-# #
-# # 1 - plots -----
-# #
-
 # par(mfrow=c(2, 4))
 #
 # plot(fit_obj$y, type = 'l', xlim = c(1, 10),
@@ -126,8 +126,6 @@ update_params <- function(fit_obj,
     )$predictors
   } else {
 
-    #print("here2")
-
     pred_clusters <- predict(
       fit_obj$clust_obj,
       bayesianrvfl::my_scale(
@@ -137,13 +135,8 @@ update_params <- function(fit_obj,
       )
     )
 
-    #print("here3")
-
-    newX_clust <-
-      bayesianrvfl::one_hot_encode_cpp(pred_clusters$cluster,
+    newX_clust <- bayesianrvfl::one_hot_encode_cpp(pred_clusters$cluster,
                                    fit_obj$n_clusters)
-
-    #print("here4")
 
     augmented_newx <-
       create_new_predictors(
@@ -155,8 +148,6 @@ update_params <- function(fit_obj,
         nn_scales = fit_obj$nn_scales
       )$predictors
   }
-
-  #print("here5")
 
   scaled_augmented_newx <- my_scale(x = augmented_newx, xm = xm,
                                     xsd = scales)

@@ -419,6 +419,26 @@ bayes_opt <- function(objective, # objective function
     if (surrogate_model == "matern52")
     {
 
+      find_next_param_by_ei <- function(x)
+      {
+        if (is.vector(x))
+          x <- matrix(x, nrow = 1)
+
+        pred_obj <- bayesianrvfl::predict_matern52(
+          bayesianrvfl::fit_matern52( x = parameters, y = scores,
+                                      sigma = best_sigma,
+                                      l = best_l,
+                                      lambda_krls = best_lam,
+                                      compute_Sigma = TRUE), newx = x)
+
+        mu_hat <- pred_obj$mean
+        sigma_hat <- pred_obj$sd
+        gamma_hat <- (min(scores) - mu_hat) / sigma_hat
+        res <- -sigma_hat * (gamma_hat * pnorm(gamma_hat) + dnorm(gamma_hat))
+
+        return (ifelse(!is.na(res), res, 1000))
+
+      }
       find_next_param_by_ei <- compiler::cmpfun(find_next_param_by_ei)
 
       find_next_param_by_ucb <- function(x)
