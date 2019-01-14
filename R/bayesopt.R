@@ -16,7 +16,7 @@ bayes_opt <- function(objective, # objective function
                       early_stopping = FALSE, abs_tol = 1e-07, rel_tol = 1e-03, # currently only for method == 'direct_online'
                       seed = 123, verbose = TRUE, show_progress = TRUE, ...)
 {
-  OF <- function(y) {return(objective(y, ...))}
+  OF <- function(y, ...) {return(objective(y, ...))}
 
   nb_is_found <- 0
   dim_xx <- length(lower)
@@ -252,9 +252,10 @@ bayes_opt <- function(objective, # objective function
 
         if (type_optim == "randsearch")
         {
+          cat(" randsearch...", "\n")
           next_param <- suppressWarnings(
             bayesianrvfl::random_search_opt(objective = find_next_param,
-                                            nb_iter = 1000, sim = "sobol",
+                                            nb_iter = 100, sim = "sobol",
                                             lower = lower, upper = upper)$par)
 
         }
@@ -356,7 +357,7 @@ bayes_opt <- function(objective, # objective function
 
           next_param <- suppressWarnings(
             bayesianrvfl::random_search_opt(objective = find_next_param,
-                                            nb_iter = 1000, sim = "sobol",
+                                            nb_iter = 100, sim = "sobol",
                                             lower = lower, upper = upper)$par)
 
         # if already found before, search randomly for another one
@@ -500,7 +501,7 @@ bayes_opt <- function(objective, # objective function
         {
           next_param <- suppressWarnings(
             bayesianrvfl::random_search_opt(objective = find_next_param,
-                                            nb_iter = 1000, sim = "sobol",
+                                            nb_iter = 100, sim = "sobol",
                                             lower = lower, upper = upper)$par)
 
         }
@@ -662,9 +663,8 @@ bayes_opt <- function(objective, # objective function
         {
           next_param <- suppressWarnings(
             bayesianrvfl::random_search_opt(objective = find_next_param,
-                                            nb_iter = 1000, sim = "sobol",
+                                            nb_iter = 100, sim = "sobol",
                                             lower = lower, upper = upper)$par)
-
         }
 
         # if already found before, search randomly for another one
@@ -869,7 +869,7 @@ bayes_opt <- function(objective, # objective function
         {
           next_param <- suppressWarnings(
             bayesianrvfl::random_search_opt(objective = find_next_param,
-                                            nb_iter = 1000, sim = "sobol",
+                                            nb_iter = 100, sim = "sobol",
                                             lower = lower, upper = upper)$par)
 
         }

@@ -112,11 +112,12 @@ random_search_opt <- function(objective, nb_iter = 100,
       i = 1:nb_iter,
       .combine = c,
       .verbose = FALSE,
-      .errorhandling = "stop"
+      .errorhandling = "remove"
     ) %op% {
       setTxtProgressBar(pb, i)
-
-      OF(searched_points[i, ], ...)
+      res <- try(OF(searched_points[i, ], ...),
+                 silent = TRUE)
+      ifelse(class(res) == "try-error", 1e06, res)
     }
 
     close(pb)
@@ -142,9 +143,11 @@ random_search_opt <- function(objective, nb_iter = 100,
           .options.snow = opts,
           .export = ...,
           .verbose = FALSE,
-          .errorhandling = "stop"
+          .errorhandling = "remove"
         ) %dopar% {
-          OF(searched_points[i, ], ...)
+          res <- try(OF(searched_points[i, ], ...),
+                     silent = TRUE)
+          ifelse(class(res) == "try-error", 1e06, res)
         }
       )
     snow::stopCluster(cl_SOCK)
@@ -155,3 +158,4 @@ random_search_opt <- function(objective, nb_iter = 100,
   return(list(par = searched_points[index_opt, ],
               objective = res[index_opt]))
 }
+random_search_opt <- memoise::memoise(f = random_search_opt)
