@@ -181,7 +181,7 @@ cv_rvfl <- function(x, y, k = 5, repeats = 3,
     opts <- list(progress = progress)
 
     i <- NULL
-    res <- foreach::foreach(i = 1:nb_iter, .packages = "doSNOW",
+    res <- foreach::foreach(i = 1:nb_iter, .packages = c("doSNOW", "Rcpp"),
                             .combine = rbind, .errorhandling = "remove",
                             .options.snow = opts, .verbose = FALSE,
                             .export = c("compute_accuracy",
@@ -209,9 +209,9 @@ cv_rvfl <- function(x, y, k = 5, repeats = 3,
     pb <- txtProgressBar(min = 0, max = nb_iter, style = 3)
 
     i <- NULL
-    res <- foreach::foreach(i = 1:nb_iter, .packages = "doSNOW",
+    res <- foreach::foreach(i = 1:nb_iter, .packages = "Rcpp",
                             .combine = rbind, .errorhandling = "remove",
-                            .options.snow = opts, .verbose = FALSE,
+                            .verbose = FALSE,
                             .export = c("compute_accuracy",
                                         "is.wholenumber",
                                         "create_folds",
