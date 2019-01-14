@@ -12,7 +12,7 @@ bayes_opt <- function(objective, # objective function
                       surrogate_model = c("rvfl", "matern52", "rvfl_emcee", "rf"), # surrogate model
                       optim_surr = c("GCV", "loglik", "cv"), # surrogate hyperparams fitting
                       activation_function = c("relu", "tanh", "sigmoid"), # activation for bayesian rvfl
-                      type_optim = c("nlminb", "DEoptim", "msnlminb", "none"), # optim for acquisition
+                      type_optim = c("nlminb", "DEoptim", "msnlminb", "randsearch"), # optim for acquisition
                       early_stopping = FALSE, abs_tol = 1e-07, rel_tol = 1e-03, # currently only for method == 'direct_online'
                       seed = 123, verbose = TRUE, show_progress = TRUE, ...)
 {
@@ -250,6 +250,15 @@ bayes_opt <- function(objective, # objective function
             next_param <- lower + (upper - lower)*runif(dim_xx)
         }
 
+        if (type_optim == "randsearch")
+        {
+          next_param <- suppressWarnings(
+            bayesianrvfl::random_search_opt(objective = find_next_param,
+                                            nb_iter = 1000, sim = "sobol",
+                                            lower = lower, upper = upper)$par)
+
+        }
+
         # if already found before, search randomly for another one
         if (param_is_found(parameters, next_param) == TRUE)
         {
@@ -294,7 +303,7 @@ bayes_opt <- function(objective, # objective function
 
     if (surrogate_model == "rvfl_emcee")
     {
-      stopifnot(type_optim == "none") # otherwise the optimization will never end
+      stopifnot(type_optim == "randsearch") # otherwise the optimization will never end
 
       find_next_param_by_ei <- function(x)
       {
@@ -345,34 +354,10 @@ bayes_opt <- function(objective, # objective function
           cat("\n")
         }
 
-        # find next point to evaluate ----
-        if (type_optim == "nlminb")
-        {
-          set.seed(iter + 1)
           next_param <- suppressWarnings(
-            stats::nlminb(start = lower + (upper - lower) * runif(length(lower)),
-                          objective = find_next_param,
-                          lower = lower, upper = upper)$par)
-        }
-
-        if (type_optim == "msnlminb")
-        {
-          next_param <- suppressWarnings(
-            bayesianrvfl::msnlminb(objective = find_next_param,
-                                   lower = lower, upper = upper,
-                                   nb_iter = 10)$par)
-        }
-
-        if (type_optim == "DEoptim")
-        {
-          next_param <-
-            suppressWarnings(
-              DEoptim::DEoptim(fn = find_next_param,
-                               lower = lower, upper = upper,
-                               control = DEoptim::DEoptim.control(
-                                 trace = FALSE, parallelType = 0,
-                                 itermax = 25))$optim$bestmem)
-        }
+            bayesianrvfl::random_search_opt(objective = find_next_param,
+                                            nb_iter = 1000, sim = "sobol",
+                                            lower = lower, upper = upper)$par)
 
         # if already found before, search randomly for another one
         if (param_is_found(parameters, next_param) == TRUE)
@@ -509,6 +494,15 @@ bayes_opt <- function(objective, # objective function
                 )
               )$optim$bestmem
             )
+        }
+
+        if (type_optim == "randsearch")
+        {
+          next_param <- suppressWarnings(
+            bayesianrvfl::random_search_opt(objective = find_next_param,
+                                            nb_iter = 1000, sim = "sobol",
+                                            lower = lower, upper = upper)$par)
+
         }
 
         if (param_is_found(parameters, next_param) == TRUE)
@@ -662,6 +656,15 @@ bayes_opt <- function(objective, # objective function
 
           if (any(is.na(next_param)))
             next_param <- lower + (upper - lower)*runif(dim_xx)
+        }
+
+        if (type_optim == "randsearch")
+        {
+          next_param <- suppressWarnings(
+            bayesianrvfl::random_search_opt(objective = find_next_param,
+                                            nb_iter = 1000, sim = "sobol",
+                                            lower = lower, upper = upper)$par)
+
         }
 
         # if already found before, search randomly for another one
@@ -860,6 +863,15 @@ bayes_opt <- function(objective, # objective function
                 )
               )$optim$bestmem
             )
+        }
+
+        if (type_optim == "randsearch")
+        {
+          next_param <- suppressWarnings(
+            bayesianrvfl::random_search_opt(objective = find_next_param,
+                                            nb_iter = 1000, sim = "sobol",
+                                            lower = lower, upper = upper)$par)
+
         }
 
         if (param_is_found(parameters, next_param) == TRUE)

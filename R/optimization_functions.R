@@ -155,4 +155,3 @@ random_search_opt <- function(objective, nb_iter = 100,
   return(list(par = searched_points[index_opt, ],
               objective = res[index_opt]))
 }
-
