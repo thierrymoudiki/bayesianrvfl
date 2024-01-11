@@ -1,6 +1,32 @@
 # abs(1-x(i)/x(i-1)) < relTol (1e-10) ||  abs(x(i)-x(i-1)) < absTol (1e-20)
 # Bayesian optimization
 
+#' Title
+#'
+#' @param objective
+#' @param lower
+#' @param upper
+#' @param type_acq
+#' @param nb_init
+#' @param nb_iter
+#' @param kappa
+#' @param method
+#' @param surrogate_model
+#' @param optim_surr
+#' @param activation_function
+#' @param type_optim
+#' @param early_stopping
+#' @param abs_tol
+#' @param rel_tol
+#' @param seed
+#' @param verbose
+#' @param show_progress
+#' @param ...
+#'
+#' @return
+#' @export
+#'
+#' @examples
 bayes_opt <- function(objective, # objective function
                       lower, # lower bound for search
                       upper, # upper bound for search

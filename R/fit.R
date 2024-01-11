@@ -59,7 +59,15 @@ fit_rvfl <- function(x, y,
 
   X <- x_scaled$res
 
+  cat("X", "\n")
+  print(X)
+  cat("\n")
+
   XTX <- crossprod(X)
+
+  cat("XTX", "\n")
+  print(XTX)
+  cat("\n")
 
   if (method == "svd")
   {
