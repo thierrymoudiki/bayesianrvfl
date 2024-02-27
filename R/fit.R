@@ -37,7 +37,7 @@ fit_rvfl <- function(x, y,
     set.seed(seed)
     X_clust_obj <- cclust::cclust(x = init_x_scaled$res,
                                   centers = n_clusters)
-    X_clust <- bayesianrvfl::one_hot_encode_cpp(X_clust_obj$cluster,
+    X_clust <- one_hot(X_clust_obj$cluster,
                                             n_clusters)
     list_xreg <- create_new_predictors(
       x = cbind(x, X_clust),
@@ -59,15 +59,15 @@ fit_rvfl <- function(x, y,
 
   X <- x_scaled$res
 
-  cat("X", "\n")
-  print(X)
-  cat("\n")
+  # cat("X", "\n")
+  # print(X)
+  #cat("\n")
 
   XTX <- crossprod(X)
 
-  cat("XTX", "\n")
-  print(XTX)
-  cat("\n")
+  # cat("XTX", "\n")
+  # print(XTX)
+  # cat("\n")
 
   if (method == "svd")
   {

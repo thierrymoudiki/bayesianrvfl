@@ -28,7 +28,7 @@ predict_rvfl <- function(fit_obj, newx,
 
     pred_clusters <- predict(fit_obj$clust_obj, scaled_newx)
 
-    newX_clust <- bayesianrvfl::one_hot_encode_cpp(pred_clusters$cluster,
+    newX_clust <- one_hot(pred_clusters$cluster,
                                    fit_obj$n_clusters)
 
     newx <- create_new_predictors(
@@ -147,8 +147,7 @@ predict_rvfl_mcmc <- function(fit_obj,
                                 )
                               )
 
-                              newX_clust <-
-                                bayesianrvfl::one_hot_encode_cpp(pred_clusters$cluster,
+                              newX_clust <- one_hot(pred_clusters$cluster,
                                                              fit_obj_i$n_clusters)
 
                               augmented_newx <- create_new_predictors(

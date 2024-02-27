@@ -1,48 +1,6 @@
 # 0 - functions -----------------------------------------------------------
 
-# inspired from caret::createFolds
-create_folds <- function(y, k = 10)
-{
-  if (is.numeric(y)) {
-    cuts <- floor(length(y)/k)
-    if (cuts < 2)
-      cuts <- 2
-    if (cuts > 5)
-      cuts <- 5
-    breaks <- unique(quantile(y, probs = seq(0, 1, length = cuts)))
-    y <- cut(y, breaks, include.lowest = TRUE)
-  }
-  if (k < length(y)) {
-    y <- factor(as.character(y))
-    numInClass <- table(y)
-    foldVector <- vector(mode = "integer", length(y))
-    for (i in 1:length(numInClass)) {
-      min_reps <- numInClass[i]%/%k
-      if (min_reps > 0) {
-        spares <- numInClass[i]%%k
-        seqVector <- rep(1:k, min_reps)
-        if (spares > 0)
-          seqVector <- c(seqVector, sample(1:k, spares))
-        foldVector[which(y == names(numInClass)[i])] <- sample(seqVector)
-      }
-      else {
-        foldVector[which(y == names(numInClass)[i])] <- sample(1:k,
-                                                               size = numInClass[i])
-      }
-    }
-  }
-  else foldVector <- seq(along = y)
-
-  out <- split(seq(along = y), foldVector)
-  names(out) <- paste("Fold", gsub(" ", "0", format(seq(along = out))),
-                      sep = "")
-
-
-  return(out)
-}
-create_folds <- compiler::cmpfun(create_folds)
-
-compute_accuracy <- function(x, y, nb_hidden = 5, n_clusters = 2,
+compute_RMSE <- function(x, y, nb_hidden = 5, n_clusters = 2,
                              nodes_sim = c("sobol", "halton", "unif"),
                              activ = c("relu", "sigmoid", "tanh",
                                        "leakyrelu", "elu", "linear"),
@@ -62,42 +20,53 @@ compute_accuracy <- function(x, y, nb_hidden = 5, n_clusters = 2,
   {
     set.seed(seed)
     list_folds <- lapply(1:repeats,
-                         function (i) create_folds(y = y, k = k))
+                         function (i) caret::createFolds(y = y, k = k))
+    debug_print(list_folds)
     i <- j <- NULL
-    res <- foreach::foreach(j = 1:repeats, .combine = 'rbind', .errorhandling = "stop")%op%{
-      temp <- foreach::foreach(i = 1:k, .combine = 'rbind', .errorhandling = "stop")%op%{
-        train_index <- -list_folds[[j]][[i]]
+    res <- foreach::foreach(j = 1:repeats, .combine = 'rbind',
+                            .errorhandling = "stop",
+                            verbose = TRUE)%op%{
+      temp <- foreach::foreach(i = 1:k, .combine = 'rbind',
+                               .errorhandling = "stop",
+                               verbose = TRUE)%op%{
+        train_index <- list_folds[[j]][[i]]
+        debug_print(train_index)
         test_index <- -train_index
         fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
                             nodes_sim = nodes_sim, activ = activ,
                             nb_hidden = nb_hidden, n_clusters = n_clusters,
                             lambda = lambda, compute_Sigma = FALSE)
+        debug_print(fit_obj)
         predict_rvfl(fit_obj, newx = x[test_index, ]) - y[test_index]
       }
     }
-
+    debug_print(res)
     #return(res)
     return(sqrt(colMeans(res^2)))
   } else {
 
     set.seed(seed)
-    folds <- create_folds(y = y, k = k)
+    folds <- caret::createFolds(y = y, k = k)
 
-    res <- foreach::foreach(i = 1:k, .combine = rbind)%op%{
-      train_index <- -folds[[i]]
+    res <- foreach::foreach(i = 1:k, .combine = rbind,
+                            .errorhandling = "stop",
+                            verbose = TRUE)%op%{
+      train_index <- folds[[i]]
+      debug_print(train_index)
       test_index <- -train_index
       fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
                           nodes_sim = nodes_sim, activ = activ,
                           nb_hidden = nb_hidden, n_clusters = n_clusters,
                           lambda = lambda, compute_Sigma = FALSE)
+      debug_print(fit_obj)
       predict_rvfl(fit_obj, newx = x[test_index, ]) - y[test_index]
     }
-
+    debug_print(res)
     #return(res)
     return(sqrt(colMeans(res^2)))
   }
 }
-compute_accuracy <- compiler::cmpfun(compute_accuracy)
+compute_RMSE <- compiler::cmpfun(compute_RMSE)
 
 # 1 - GCV -----------------------------------------------------------
 
@@ -183,10 +152,10 @@ cv_rvfl <- function(x, y, k = 5, repeats = 3,
     i <- NULL
     res <- foreach::foreach(i = 1:nb_iter, .packages = c("doSNOW", "Rcpp"),
                             .combine = rbind, .errorhandling = "remove",
-                            .options.snow = opts, .verbose = FALSE,
-                            .export = c("compute_accuracy",
+                            .options.snow = opts, .verbose = TRUE,
+                            .export = c("compute_RMSE",
                                         "is.wholenumber",
-                                        "create_folds",
+                                        "createFolds",
                                         "fit_rvfl",
                                         "predict_rvfl",
                                         "create_new_predictors",
@@ -194,7 +163,7 @@ cv_rvfl <- function(x, y, k = 5, repeats = 3,
                                         "remove_zero_cols",
                                         "my_sd"))%op%
                                         {
-                                          as.vector(compute_accuracy(x = x, y = y,
+                                          as.vector(compute_RMSE(x = x, y = y,
                                                                      nb_hidden = nodes_clusters_df[i, 1],
                                                                      n_clusters = nodes_clusters_df[i, 2],
                                                                      nodes_sim = nodes_sim, activ = activ,
@@ -211,10 +180,10 @@ cv_rvfl <- function(x, y, k = 5, repeats = 3,
     i <- NULL
     res <- foreach::foreach(i = 1:nb_iter, .packages = "Rcpp",
                             .combine = rbind, .errorhandling = "remove",
-                            .verbose = FALSE,
-                            .export = c("compute_accuracy",
+                            .verbose = TRUE,
+                            .export = c("compute_RMSE",
                                         "is.wholenumber",
-                                        "create_folds",
+                                        "createFolds",
                                         "fit_rvfl",
                                         "predict_rvfl",
                                         "create_new_predictors",
@@ -223,7 +192,7 @@ cv_rvfl <- function(x, y, k = 5, repeats = 3,
                                         "my_sd"))%op%
                                         {
                                           setTxtProgressBar(pb, i)
-                                          as.vector(compute_accuracy(x = x, y = y,
+                                          as.vector(compute_RMSE(x = x, y = y,
                                                                      nb_hidden = nodes_clusters_df[i, 1],
                                                                      n_clusters = nodes_clusters_df[i, 2],
                                                                      nodes_sim = nodes_sim, activ = activ,

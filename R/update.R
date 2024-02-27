@@ -1,14 +1,14 @@
 # 0 - data -----
-library(MASS)
-data("Boston")
-X <- as.matrix(Boston[, -ncol(Boston)])
-y <- Boston[, ncol(Boston)]
-n <- 30; p <- 5
-set.seed(123)
-X <- matrix(rnorm(n * p), n, p) # no intercept!
-y <- rnorm(n)
-idx_train <- caret::createDataPartition(y, p = 0.8)
-(fit_obj <- fit_rvfl(x = X[idx_train,], y = y[idx_train]))
+# library(MASS)
+# data("Boston")
+# X <- as.matrix(Boston[, -ncol(Boston)])
+# y <- Boston[, ncol(Boston)]
+# n <- 30; p <- 5
+# set.seed(123)
+# X <- matrix(rnorm(n * p), n, p) # no intercept!
+# y <- rnorm(n)
+# idx_train <- caret::createDataPartition(y, p = 0.8)
+# (fit_obj <- fit_rvfl(x = X[idx_train,], y = y[idx_train]))
 #
 # fit_obj2 <- update_params(fit_obj, newx = X[21, ], newy = y[21])
 # fit_obj3 <- update_params(fit_obj2, newx = X[22, ], newy = y[22])
@@ -135,7 +135,7 @@ update_params <- function(fit_obj,
       )
     )
 
-    newX_clust <- bayesianrvfl::one_hot_encode_cpp(pred_clusters$cluster,
+    newX_clust <- one_hot(pred_clusters$cluster,
                                    fit_obj$n_clusters)
 
     augmented_newx <-
@@ -284,7 +284,7 @@ update_params <- function(fit_obj,
       )
     )
 
-    X_clust <- bayesianrvfl::one_hot_encode_cpp(X_clust_obj$cluster,
+    X_clust <- one_hot(X_clust_obj$cluster,
                                             fit_obj$n_clusters)
 
     list_xreg <-

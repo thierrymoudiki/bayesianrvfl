@@ -1,4 +1,30 @@
-# check if the set of parameter has already been found by the algo
+# prehistoric stuff -----
+debug_print <- function(x) {
+  cat("\n")
+  print(paste0(deparse(substitute(x)), "'s value:"))
+  print(x)
+  cat("\n")
+}
+
+# one-hot encoding -----
+one_hot <- function(y, n_classes) {
+  class_names <- as.character(levels(y))
+  y <- as.numeric(y)
+  n_obs <- length(y)
+  res <- matrix(0, nrow = n_obs,
+                ncol = n_classes)
+  colnames(res) <- class_names
+
+  for (i in 1:n_obs) {
+    res[i, y[i]] = 1
+  }
+
+  return(res)
+}
+one_hot <- memoise::memoise(one_hot)
+
+
+# check if the set of parameter has already been found by the algo -----
 param_is_found <- function(mat, vec)
 {
   mat <- as.matrix(mat)
@@ -43,18 +69,18 @@ find_next_param_by_es <- function(x)
 }
 find_next_param_by_es <- compiler::cmpfun(find_next_param_by_es)
 
-# expand.grid for data frames
+# expand.grid for data frames -----
 expand_grid_df <- function(...) Reduce(function(...) merge(..., by=NULL), list(...))
 expand_grid_df <- compiler::cmpfun(expand_grid_df)
 
-# find integer params in data frame df
+# find integer params in data frame df -----
 is_integer_params <- function(df)
 {
   return(sapply(1:ncol(df),
                 function (i) is.integer(df[ , i])))
 }
 
-# transform data frame df columns to integers when specified in 'is_integer_bool'
+# transform data frame df columns to integers when specified in 'is_integer_bool' -----
 transform_cols_integer <- function(df, is_integer_bool)
 {
   if (sum(is_integer_bool) > 0){
@@ -69,7 +95,7 @@ transform_cols_integer <- function(df, is_integer_bool)
   return(df)
 }
 
-# initial design of hyperparameters (parameters of the objective)
+# initial design of hyperparameters (parameters of the objective) -----
 initial_design <- function(x, y, # x = covariates, y = response
                            # subsets of dataset (x, y), and we have f_approx(x, s = 1) = f(x) (we want to avoid s = 1)
                            method = "svmRadial",

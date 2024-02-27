@@ -10,5 +10,6 @@ License: BSD_3_clause Clear + file LICENSE
 Encoding: UTF-8
 LazyData: true
 LinkingTo: Rcpp
-Imports: Rcpp, foreach
-Depends: cclust, MASS, randtoolbox
+Imports: Rcpp, randtoolbox, foreach
+Depends: cclust 
+
