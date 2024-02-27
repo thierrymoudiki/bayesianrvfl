@@ -1,14 +1,14 @@
 # 0 - data -----
-library(MASS)
-data("Boston")
-X <- as.matrix(Boston[, -ncol(Boston)])
-y <- Boston[, ncol(Boston)]
-n <- 30; p <- 5
-set.seed(123)
-X <- matrix(rnorm(n * p), n, p) # no intercept!
-y <- rnorm(n)
-idx_train <- caret::createDataPartition(y, p = 0.8)
-(fit_obj <- fit_rvfl(x = X[idx_train,], y = y[idx_train]))
+# library(MASS)
+# data("Boston")
+# X <- as.matrix(Boston[, -ncol(Boston)])
+# y <- Boston[, ncol(Boston)]
+# n <- 30; p <- 5
+# set.seed(123)
+# X <- matrix(rnorm(n * p), n, p) # no intercept!
+# y <- rnorm(n)
+# idx_train <- caret::createDataPartition(y, p = 0.8)
+# (fit_obj <- fit_rvfl(x = X[idx_train,], y = y[idx_train]))
 #
 # fit_obj2 <- update_params(fit_obj, newx = X[21, ], newy = y[21])
 # fit_obj3 <- update_params(fit_obj2, newx = X[22, ], newy = y[22])
