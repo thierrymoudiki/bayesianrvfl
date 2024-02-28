@@ -443,6 +443,7 @@ lines(1:n_preds, quakes[-train_index, 4])
 lines(1:n_preds, pred_obj$mean, col = 'red')
 
 # Boston
+library(MASS)
 data("Boston")
 
 train_index <- caret::createDataPartition(Boston[, 1], p=0.8)[[1]]

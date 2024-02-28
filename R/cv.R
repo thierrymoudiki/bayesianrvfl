@@ -21,7 +21,7 @@ compute_RMSE <- function(x, y, nb_hidden = 5, n_clusters = 2,
     set.seed(seed)
     list_folds <- lapply(1:repeats,
                          function (i) caret::createFolds(y = y, k = k))
-    debug_print(list_folds)
+
     i <- j <- NULL
     res <- foreach::foreach(j = 1:repeats, .combine = 'rbind',
                             .errorhandling = "stop",
@@ -30,17 +30,18 @@ compute_RMSE <- function(x, y, nb_hidden = 5, n_clusters = 2,
                                .errorhandling = "stop",
                                verbose = TRUE)%op%{
         train_index <- list_folds[[j]][[i]]
-        debug_print(train_index)
+
         test_index <- -train_index
         fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
                             nodes_sim = nodes_sim, activ = activ,
                             nb_hidden = nb_hidden, n_clusters = n_clusters,
                             lambda = lambda, compute_Sigma = FALSE)
-        debug_print(fit_obj)
+
+
         predict_rvfl(fit_obj, newx = x[test_index, ]) - y[test_index]
       }
     }
-    debug_print(res)
+
     #return(res)
     return(sqrt(colMeans(res^2)))
   } else {
@@ -52,16 +53,17 @@ compute_RMSE <- function(x, y, nb_hidden = 5, n_clusters = 2,
                             .errorhandling = "stop",
                             verbose = TRUE)%op%{
       train_index <- folds[[i]]
-      debug_print(train_index)
+
       test_index <- -train_index
       fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
                           nodes_sim = nodes_sim, activ = activ,
                           nb_hidden = nb_hidden, n_clusters = n_clusters,
                           lambda = lambda, compute_Sigma = FALSE)
-      debug_print(fit_obj)
+
+
       predict_rvfl(fit_obj, newx = x[test_index, ]) - y[test_index]
     }
-    debug_print(res)
+
     #return(res)
     return(sqrt(colMeans(res^2)))
   }
