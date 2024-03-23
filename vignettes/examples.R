@@ -151,16 +151,15 @@ train_index <- createDataPartition(y, p = 0.7)[[1]]
                   #cl = 4,
                   seed = 1))
 
-  fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
-                      nb_hidden = res_cv$best_nb_hidden,
-                      lambda = res_cv$best_lam,
-                      n_clusters = res_cv$best_n_clusters,
-                      compute_Sigma = TRUE)
+fit_obj <- fit_rvfl(x = x[train_index, ], y = y[train_index],
+                    nb_hidden = res_cv$best_nb_hidden,
+                    lambda = res_cv$best_lam,
+                    n_clusters = res_cv$best_n_clusters,
+                    compute_Sigma = TRUE)
 
-  (preds <- predict_rvfl(fit_obj, newx = x[-train_index, ]))
+(preds <- predict_rvfl(fit_obj, newx = x[-train_index, ]))
 
-  sqrt(mean((preds$mean - y[-train_index])^2))
-
+sqrt(mean((preds$mean - y[-train_index])^2))
 
 qt95 <- qnorm(1-0.05/2)
 qt80 <- qnorm(1-0.1/2)

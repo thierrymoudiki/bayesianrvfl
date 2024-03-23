@@ -5,8 +5,8 @@ fit_rvfl <- function(x, y,
                      nodes_sim = c("sobol", "halton", "unif"),
                      activ = c("relu", "sigmoid", "tanh",
                                "leakyrelu", "elu", "linear"),
-                     lambda = 10 ^ seq(from = -4,
-                                       to = 5,
+                     lambda = 10 ^ seq(from = -10,
+                                       to = 10,
                                        length.out = 100),
                      method = c("svd", "solve"),
                      compute_Sigma = FALSE,
@@ -313,13 +313,13 @@ fit_rvfl_mcmc <- function(x, y, cl = NULL,
       doSNOW::registerDoSNOW(cl_SOCK)
       #`%op%` <-  foreach::`%dopar%`
 
-      pb <- txtProgressBar(min = 0, max = nb_iters, style = 3)
-      progress <- function(n) utils::setTxtProgressBar(pb, n)
-      opts <- list(progress = progress)
+      #pb <- txtProgressBar(min = 0, max = nb_iters, style = 3)
+      #progress <- function(n) utils::setTxtProgressBar(pb, n)
+      #opts <- list(progress = progress)
 
       res <- foreach::foreach(i = 1:nb_iters,
                               .packages = c("doSNOW", "Rcpp"),
-                              .options.snow = opts,
+                              #.options.snow = opts,
                               .errorhandling = "remove",
                               .verbose = FALSE)%dopar%{
 
@@ -332,15 +332,15 @@ fit_rvfl_mcmc <- function(x, y, cl = NULL,
                                                        method = "svd",
                                                        compute_Sigma = FALSE)
                               }
-      close(pb)
+      #close(pb)
     }  else {
       #`%op%` <-  foreach::`%do%`
-      pb <- txtProgressBar(min = 0, max = nb_iters, style = 3)
+      #pb <- txtProgressBar(min = 0, max = nb_iters, style = 3)
       res <- foreach::foreach(i = 1:nb_iters,
                               .verbose = FALSE,
                               .errorhandling = "remove")%do%{
 
-                                setTxtProgressBar(pb, i)
+                                #setTxtProgressBar(pb, i)
                                 bayesianrvfl::fit_rvfl(x = x, y = y,
                                                        nb_hidden = nodes_clusters_df[i, 1],
                                                        n_clusters = nodes_clusters_df[i, 2],
@@ -350,7 +350,7 @@ fit_rvfl_mcmc <- function(x, y, cl = NULL,
                                                        method = "svd",
                                                        compute_Sigma = FALSE)
                               }
-      close(pb)
+      #close(pb)
     }
 
   return(list(obj = res,

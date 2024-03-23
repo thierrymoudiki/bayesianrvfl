@@ -65,11 +65,13 @@ predict_rvfl <- function(fit_obj, newx,
       I_p <- diag(p)
       Sigma <-
         I_p - solve(crossprod(scaled_newx) + lambda * I_p) %*% crossprod(scaled_newx)
+      Sigma_newx <- tcrossprod(scaled_newx %*% Sigma,
+                               scaled_newx) + lambda * diag(n)
       return (list(mean = res,
                    sd = sqrt(diag(
-                     tcrossprod(scaled_newx %*% Sigma,
-                                scaled_newx) + lambda * diag(n)
-                   ))))
+                     Sigma_newx
+                   )),
+                   simulate = function(n) MASS::mvrnorm(n = n, mu = res, Sigma = Sigma_newx)))
     } else {
 
       return (res)

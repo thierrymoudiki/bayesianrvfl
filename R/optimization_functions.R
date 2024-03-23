@@ -159,3 +159,76 @@ random_search_opt <- function(objective, nb_iter = 100,
               objective = res[index_opt]))
 }
 random_search_opt <- memoise::memoise(f = random_search_opt)
+
+
+
+# 3 - multistart nmkb ---------------------------------------------------------------
+
+msnmkb <- function(objective, nb_iter = 100,
+                     lower, upper, cl = NULL,
+                     ...)
+{
+  OF <- function(u, ...)
+  {return(objective(u, ...))}
+
+  rep_1_nb_iter <- rep(1, nb_iter)
+  lower_mat <- tcrossprod(rep_1_nb_iter, lower)
+  upper_mat <- tcrossprod(rep_1_nb_iter, upper)
+
+  starting_points <- lower_mat + (upper_mat - lower_mat)*randtoolbox::sobol(n = nb_iter,
+                                                                            dim = length(lower))
+  nb_iter <- nrow(starting_points)
+
+  pb <- txtProgressBar(min = 0, max = nb_iter, style = 3)
+
+  if (is.null(cl)) {
+
+    res <- foreach::foreach(i = 1:nb_iter,
+                            .export = "ldots",
+                            .verbose = FALSE,
+                            .packages = "dfoptim",
+                            .errorhandling = "remove")%do%{
+                              setTxtProgressBar(pb, i)
+                              dfoptim::nmkb(par = starting_points[i, ],
+                                            fn = OF,
+                                            lower = lower,
+                                            upper = upper,
+                                            ...)
+                            }
+    close(pb)
+
+  } else {
+
+    cl_SOCK <- parallel::makeCluster(cl, type = "SOCK")
+    doSNOW::registerDoSNOW(cl_SOCK)
+
+    pb <- txtProgressBar(min = 0, max = nb_iter,
+                         style = 3)
+
+    progress <- function(n) utils::setTxtProgressBar(pb, n)
+    opts <- list(progress = progress)
+
+    i <- j <- NULL
+    res <- foreach::foreach(i = 1:nb_iter,
+                            .packages = c("doSNOW", "dfoptim"),
+                            .options.snow = opts,
+                            .verbose = FALSE,
+                            .errorhandling = "remove")%dopar%{ # fix this
+
+                              dfoptim::nmkb(par = starting_points[i, ],
+                                            fn = OF,
+                                            lower = lower,
+                                            upper = upper,
+                                            ...)
+
+                            }
+
+    parallel::stopCluster(cl_SOCK)
+  }
+
+  index_opt <- which.min(sapply(1:length(res),
+                                function (i)
+                                  res[[i]]$value))
+
+  return(res[[index_opt]])
+}
