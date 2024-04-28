@@ -1,8 +1,8 @@
 Package: bayesianrvfl
 Type: Package
 Title: Bayesian Quasi-Randomized nnetworks
-Version: 0.1.0
-Date: 2023-12-04
+Version: 0.2.0
+Date: 2024-04-12  
 Author: T. Moudiki
 Maintainer: T. Moudiki <thierry.moudiki@gmail.com>
 Description: Bayesian Quasi-Randomized nnetworks.
@@ -10,6 +10,6 @@ License: BSD_3_clause Clear + file LICENSE
 Encoding: UTF-8
 LazyData: true
 LinkingTo: Rcpp
-Imports: Rcpp, randtoolbox, foreach
-Depends: cclust 
+Imports: Rcpp, randtoolbox, foreach, memoise
+Depends: cclust, memoise 
 
