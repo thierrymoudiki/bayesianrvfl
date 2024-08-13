@@ -1,4 +1,16 @@
 # predict from an rvfl ----
+
+#' Predict from an rvfl
+#'
+#' @param fit_obj
+#' @param newx
+#' @param ci
+#' @param graph
+#'
+#' @return
+#' @export
+#'
+#' @examples
 predict_rvfl <- function(fit_obj, newx,
                          ci = NULL, graph = FALSE)
 {

@@ -1,5 +1,18 @@
 # 2 - update function -----
 
+#' Update function
+#'
+#' @param fit_obj
+#' @param newx
+#' @param newy
+#' @param re_clust
+#' @param method
+#' @param alpha
+#'
+#' @return
+#' @export
+#'
+#' @examples
 update_params <- function(fit_obj,
                           newx,
                           newy,
