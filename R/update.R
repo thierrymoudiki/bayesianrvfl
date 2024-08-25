@@ -102,29 +102,24 @@ update_params <- function(fit_obj,
   {
     if (nlambda > 1)
     {
-
-      # cat("scaled_augmented_newx", "\n")
-      # print(scaled_augmented_newx)
-      # cat("\n")
-
       for (i in 1:nlambda) {
+
         # update factor
-        temp <-
-          tcrossprod(Dn[[i]], scaled_augmented_newx) # Cn^{-1}%*%t(mat_newx)
-        update_factor <-
-          Dn[[i]] - tcrossprod(temp) / (1 + drop(scaled_augmented_newx %*% temp))
-        resids <-
-          centered_newy - scaled_augmented_newx %*% fit_obj$coef
+        temp <- tcrossprod(Dn[[i]], scaled_augmented_newx) # Cn^{-1}%*%t(mat_newx)
+        update_factor <- Dn[[i]] - tcrossprod(temp) / (1 + drop(scaled_augmented_newx %*% temp))
+        resids <- centered_newy - scaled_augmented_newx %*% fit_obj$coef
 
         # update regression coefficients and covariance with update factor
-        gradients <- drop(sapply(1:length(resids),
-                                 function (i)
-                                   scaled_augmented_newx * resids[i]))
+        gradients <- drop(sapply(seq_len(length(resids)),
+                                 function (i) scaled_augmented_newx * resids[i]))
+
         if (is.null(dim(gradients)))
+        {
           gradients <- matrix(gradients, ncol = 1,
                               byrow = FALSE)
-        fit_obj$coef[, i] <-
-          fit_obj$coef[, i] + update_factor %*% gradients[, i]
+        }           
+
+        fit_obj$coef[, i] <- fit_obj$coef[, i] + update_factor %*% gradients[, i]
 
         if (fit_obj$compute_Sigma)
           fit_obj$Sigma[[i]] <-
@@ -149,8 +144,9 @@ update_params <- function(fit_obj,
           fit_obj$Sigma
     }
   } else {
-    # else method == polyak
+    # else method == polyak avg
     # update factor
+    stopifnot(alpha >= 0.5 && alpha < 1)
     update_factor <- n ^ (-alpha)
 
     if (nlambda > 1)
@@ -163,21 +159,23 @@ update_params <- function(fit_obj,
           centered_newy - scaled_augmented_newx %*% fit_obj$coef
 
         # update regression coefficients and covariance with update factor
-        gradients <- drop(sapply(1:length(resids),
-                                 function (i)
-                                   scaled_augmented_newx * resids[i]))
+        gradients <- drop(sapply(seq_len(length(resids)),
+                                 function (ix) scaled_augmented_newx * resids[ix]))
         if (is.null(dim(gradients)))
           gradients <- matrix(gradients, ncol = 1,
                               byrow = FALSE)
-        fit_obj$coef[, i] <-
-          fit_obj$coef[, i] + update_factor %*% gradients[, i]
-
+          previous_coef <-  fit_obj$coef[, i]
+          new_coef <- previous_coef + update_factor * gradients[, i]                            
+          fit_obj$avg_coefs[, i] <- ((fit_obj$n_updates + 1)*fit_obj$avg_coefs[, i] +
+           new_coef)/(fit_obj$n_updates + 2)
+          fit_obj$coef[, i] <- fit_obj$avg_coefs[, i]
+          fit_obj$n_updates <-  fit_obj$n_updates + 1
         if (fit_obj$compute_Sigma)
-          fit_obj$Sigma[[i]] <- (diag(ncol_Sigma) - update_factor %*% crossprod(scaled_augmented_newx)) %*%fit_obj$Sigma[[i]]
+          fit_obj$Sigma[[i]] <- (diag(ncol_Sigma) - update_factor * crossprod(scaled_augmented_newx)) %*%fit_obj$Sigma[[i]]
       }
     } else {
       # nlambda == 1
-      # update factor
+      # update factor is a scalar
       temp <-
         tcrossprod(Dn, scaled_augmented_newx) # Cn^{-1}%*%(t(mat_newx))
       resids <-
@@ -185,10 +183,14 @@ update_params <- function(fit_obj,
 
       # update regression coefficients and covariance with update factor
       gradients <- as.vector(scaled_augmented_newx * resids)
-      fit_obj$coef <- fit_obj$coef + update_factor %*% gradients
+      previous_coef <- fit_obj$coef 
+      new_coef <- previous_coef + update_factor * gradients
+      fit_obj$avg_coefs <- ((fit_obj$n_updates + 1)*fit_obj$avg_coefs + new_coef)/(fit_obj$n_updates + 2)
+      fit_obj$coef <- fit_obj$avg_coefs
+      fit_obj$n_updates <-  fit_obj$n_updates + 1
 
       if (fit_obj$compute_Sigma)
-        fit_obj$Sigma <- (diag(ncol_Sigma) - update_factor %*% crossprod(scaled_augmented_newx)) %*% fit_obj$Sigma
+        fit_obj$Sigma <- (diag(ncol_Sigma) - update_factor * crossprod(scaled_augmented_newx)) %*% fit_obj$Sigma
     }
   }
 

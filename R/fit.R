@@ -364,7 +364,9 @@ fit_rvfl <- function(x,
           fitted_values = drop(ym + X %*% coef),
           compute_Sigma = compute_Sigma,
           x = x,
-          y = y
+          y = y,
+          n_updates = 0,
+          avg_coefs = coef
         )
       )
     }
