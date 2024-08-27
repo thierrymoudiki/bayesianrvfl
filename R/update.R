@@ -33,7 +33,7 @@ update_params <- function(fit_obj,
   # initial number of covariates
   p <- ncol(fit_obj$x)
   # number of observations at step n
-  n <- nrow(fit_obj$x)
+  n <- nrow(fit_obj$x) # /!\ NOT NECESSARY TO STORE x (think about it)
   # number of regularization parameters
   nlambda <- length(fit_obj$lambda)
 
@@ -98,7 +98,7 @@ update_params <- function(fit_obj,
                          ncol(fit_obj$Sigma[[1]]),
                          ncol(fit_obj$Sigma))
 
-  if (method == "direct")
+  if (method == "direct") 
   {
     if (nlambda > 1)
     {

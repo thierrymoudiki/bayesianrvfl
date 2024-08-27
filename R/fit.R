@@ -76,15 +76,8 @@ fit_rvfl <- function(x,
     x_scaled <- my_scale(list_xreg$predictors)
   }
   
-  X <- x_scaled$res
-  
-  debug_print(X)
-  
+  X <- x_scaled$res  
   XTX <- crossprod(X)
-  
-  # cat("XTX", "\n")compute
-  # print(XTX)
-  # cat("\n")
   
   if (method == "svd")
   {
@@ -257,14 +250,17 @@ fit_rvfl <- function(x,
     Sigma <- NULL
     
     if (nlambda > 1)
-    {
+    { 
+
       Dn <- vector("list", length = nlambda)
       names(Dn) <- lambda
+
       if (compute_Sigma == TRUE)
       {
         Sigma <- vector("list", length = nlambda)
         names(Sigma) <- lambda
       }
+
       if (identical(method, "solve"))
       {
         if (compute_Sigma == TRUE)
@@ -273,11 +269,10 @@ fit_rvfl <- function(x,
                                    .combine = cbind) %do% {
                                      Dn[[i]] <- solve(XTX + diag(x = lambda[i],
                                                                  nrow = nrow(XTX))) # Cn^{-1}
-                                     Sigma[[i]] <-
-                                       diag(ncol(X)) - Dn[[i]] %*% XTX # Sigma_n
+                                     Sigma[[i]] <- diag(ncol(X)) - Dn[[i]] %*% XTX # Sigma_n
                                      Dn[[i]] %*% crossprod(X, centered_y) # beta_n
                                    }
-        } else {
+        } else { # identical(method, "chol")
           coef <- foreach::foreach(i = 1:nlambda,
                                    .combine = cbind) %do% {
                                      Dn[[i]] <- solve(XTX + diag(x = lambda[i],
@@ -286,61 +281,20 @@ fit_rvfl <- function(x,
                                    }
         }
       }
-      
-      
-      if (identical(method, "chol"))
-      {
-        if (compute_Sigma == TRUE)
-        {
-          coef <- foreach::foreach(i = 1:nlambda,
-                                   .combine = cbind) %do% {
-                                     Dn[[i]] <- base::chol2inv(base::chol(XTX + diag(
-                                       x = lambda[i],
-                                       nrow = nrow(XTX)
-                                     ))) # Cn^{-1}
-                                     Sigma[[i]] <-
-                                       diag(ncol(X)) - Dn[[i]] %*% XTX # Sigma_n
-                                     Dn[[i]] %*% crossprod(X, centered_y) # beta_n
-                                   }
-        } else {
-          coef <- foreach::foreach(i = 1:nlambda,
-                                   .combine = cbind) %do% {
-                                     Dn[[i]] <- base::chol2inv(base::chol(XTX + diag(
-                                       x = lambda[i],
-                                       nrow = nrow(XTX)
-                                     ))) # Cn^{-1}
-                                     Dn[[i]] %*% crossprod(X, centered_y) # beta_n
-                                   }
-        }
-        colnames(coef) <- lambda
-        rownames(coef) <- colnames(x_scaled$res)
-        
-      } else {
+
+    } else { # if (nlambda == 1)
+      Sigma <- NULL 
         if (identical(method, "solve"))
-        {
-          Dn <- solve(XTX + diag(x = lambda,
-                                 nrow = nrow(XTX))) # Cn^{-1}
-          if (compute_Sigma == TRUE)
-          {
-            Sigma <- diag(ncol(X)) - Dn %*% XTX # Sigma_n
-          }
-          coef <- Dn %*% crossprod(X, centered_y) # beta_n
-        }
-        
-        if (identical(method, "chol"))
-        {
-          Dn <- base::chol2inv(base::chol(XTX + diag(
-            x = lambda,
-            nrow = nrow(XTX)
-          ))) # Cn^{-1}
-          if (compute_Sigma == TRUE)
-          {
-            Sigma <- diag(ncol(X)) - Dn %*% XTX # Sigma_n
-          }
-          coef <- Dn %*% crossprod(X, centered_y) # beta_n
-        }
-      }
-      
+      {        
+        Dn <- solve(XTX + diag(x = lambda, nrow = nrow(XTX))) # Cn^{-1}                  
+      } else { # identical(method, "chol")
+        Dn <- chol2inv(chol(XTX + diag(x = lambda, nrow = nrow(XTX)))) # Cn^{-1}                  
+      }          
+      coef <- Dn %*% crossprod(X, centered_y) # beta_n                        
+      if (compute_Sigma == TRUE)        
+          Sigma <- diag(ncol(X)) - Dn %*% XTX # Sigma_n                           
+    }
+
       return(
         list(
           coef = coef,
@@ -367,9 +321,7 @@ fit_rvfl <- function(x,
           avg_coefs = coef
         )
       )
-    }
-    
-  }
+    }    
   }
   
   

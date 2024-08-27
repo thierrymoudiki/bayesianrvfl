@@ -1,4 +1,4 @@
-.PHONY: clean docs start setwd check install load render
+.PHONY: clean docs start setwd check install load render initialize
 .DEFAULT_GOAL := help
 
 define BROWSER_PYSCRIPT
@@ -49,6 +49,9 @@ check: clean setwd ## check package
 
 install: clean setwd ## install package
 	Rscript -e "devtools::install('.')"	
+
+initialize: setwd ## initialize environment (install packages)
+	Rscript -e "utils::install.packages(c('devtools', 'rmarkdown'), repos='https://cloud.r-project.org')"		
 
 load: clean setwd ## load all (when developing the package)
 	Rscript -e "devtools::load_all('.')"
