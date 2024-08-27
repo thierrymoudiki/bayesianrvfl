@@ -32,7 +32,7 @@ fit_rvfl <- function(x,
                      seed = 123)
 {
   if (!is.null(dim(y)))
-    stop("'y' must be a vector") # otherwise y - ym is not working
+    stop("'y' must be a vector") # otherwise y - ym is not working  
   
   stopifnot(n_clusters == 0 || n_clusters > 1)
   
@@ -78,9 +78,7 @@ fit_rvfl <- function(x,
   
   X <- x_scaled$res
   
-  # cat("X", "\n")
-  # print(X)
-  #cat("\n")
+  debug_print(X)
   
   XTX <- crossprod(X)
   
