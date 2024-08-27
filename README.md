@@ -1,6 +1,6 @@
 # bayesianrvfl
 
-A Bayesian Quasi-Randomized Functional Link Neural Network. Well, well... Bayesian Linear regression on augmented datasets. 
+Adaptive Bayesian (NON)Linear regression. 
 
 ## Note to self
 
