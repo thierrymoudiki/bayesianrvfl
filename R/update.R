@@ -92,9 +92,11 @@ update_params <- function(fit_obj,
   # ----- update parameters
 
   if (fit_obj$compute_Sigma)
+  {
     ncol_Sigma <- ifelse(nlambda > 1,
                          ncol(fit_obj$Sigma[[1]]),
                          ncol(fit_obj$Sigma))
+  }    
 
   if (method == "direct") 
   {
@@ -269,9 +271,6 @@ update_params <- function(fit_obj,
       fit_obj$Dn <- Dn
     }
   }
-
-  # serves for variance prediction
-  fit_obj$compute_Sigma <- TRUE
 
   # return a new fit_obj with updated data.
   return (fit_obj)
