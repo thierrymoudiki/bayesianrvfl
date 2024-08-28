@@ -24,8 +24,6 @@ update_params <- function(fit_obj,
   stopifnot(is.null(dim(newy)) && length(newy) == 1) # newy is a scalar
   if (is.null(fit_obj$Dn))
     stop("for argument 'fit_obj', you should have 'method == chol' or 'method == solve' in function 'fit_rvfl'")
-  if (is.null(fit_obj$Sigma))
-    stop("for argument 'fit_obj', you should compute 'Sigma' in 'fit_rvfl'")
   method <- match.arg(method)
 
   # new information arriving in the system

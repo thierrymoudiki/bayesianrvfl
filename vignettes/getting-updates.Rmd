@@ -49,7 +49,7 @@ obj_GCV <- bayesianrvfl::fit_rvfl(x = X_train, y = y_train)
 fit_obj <- bayesianrvfl::fit_rvfl(x = X_train,
                                    y = y_train,
                                    method = "solve",
-                                   lambda = best_lambda,
+                                   lambda = best_lambda,       
                                    compute_Sigma = TRUE)
 print(fit_obj)
 ```
@@ -161,7 +161,7 @@ library("bayesianrvfl")
 (fit_obj <- bayesianrvfl::fit_rvfl(x = X_train,
                                    y = y_train,
                                    method = "solve",
-                                   lambda = best_lambda,
+                                   lambda = best_lambda,                                   
                                    compute_Sigma = TRUE))
 
 
