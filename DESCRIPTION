@@ -12,4 +12,4 @@ LazyData: true
 LinkingTo: Rcpp
 Imports: Rcpp, randtoolbox, foreach, memoise
 Depends: cclust, memoise 
-RoxygenNote: 7.3.0
+RoxygenNote: 7.3.2

@@ -1,4 +1,3 @@
-
 # fitting base rvfl ----
 #' Fitting base rvfl
 #'
@@ -108,55 +107,59 @@ fit_rvfl <- function(x,
         rownames(Sigma) <- colnames(X)
         
         return(
-          list(
-            coef = drop(coef),
-            #Dn = Dn,
-            scales = x_scaled$xsd,
-            Sigma = Sigma,
-            lambda = lambda,
-            ym = ym,
-            xm = x_scaled$xm,
-            n_clusters = n_clusters,
-            clusters_scales = list(means = init_x_scaled$xm,
-                                   sds = init_x_scaled$xsd),
-            clust_obj = X_clust_obj,
-            nb_hidden = nb_hidden,
-            nn_xm = list_xreg$nn_xm,
-            nn_scales = list_xreg$nn_scales,
-            nodes_sim = nodes_sim,
-            activ = activ,
-            fitted_values = drop(ym +  centered_y_hat),
-            GCV = GCV,
-            compute_Sigma = compute_Sigma,
-            x = x,
-            y = y
+          structure(
+            list(
+              coef = drop(coef),
+              scales = x_scaled$xsd,
+              Sigma = Sigma,
+              lambda = lambda,
+              ym = ym,
+              xm = x_scaled$xm,
+              n_clusters = n_clusters,
+              clusters_scales = list(means = init_x_scaled$xm,
+                                     sds = init_x_scaled$xsd),
+              clust_obj = X_clust_obj,
+              nb_hidden = nb_hidden,
+              nn_xm = list_xreg$nn_xm,
+              nn_scales = list_xreg$nn_scales,
+              nodes_sim = nodes_sim,
+              activ = activ,
+              fitted_values = drop(ym +  centered_y_hat),
+              GCV = GCV,
+              compute_Sigma = compute_Sigma,
+              x = x,
+              y = y
+            ),
+            class = "rvfl"
           )
         )
       } else {
         #else: compute_Sigma == FALSE && nlambda == 1
         
         return(
-          list(
-            coef = drop(coef),
-            #Dn = Dn,
-            scales = x_scaled$xsd,
-            lambda = lambda,
-            ym = ym,
-            xm = x_scaled$xm,
-            n_clusters = n_clusters,
-            clusters_scales = list(means = init_x_scaled$xm,
-                                   sds = init_x_scaled$xsd),
-            clust_obj = X_clust_obj,
-            nb_hidden = nb_hidden,
-            nn_xm = list_xreg$nn_xm,
-            nn_scales = list_xreg$nn_scales,
-            nodes_sim = nodes_sim,
-            activ = activ,
-            fitted_values = drop(ym +  centered_y_hat),
-            GCV = GCV,
-            compute_Sigma = compute_Sigma,
-            x = x,
-            y = y
+          structure(
+            list(
+              coef = drop(coef),
+              scales = x_scaled$xsd,
+              lambda = lambda,
+              ym = ym,
+              xm = x_scaled$xm,
+              n_clusters = n_clusters,
+              clusters_scales = list(means = init_x_scaled$xm,
+                                     sds = init_x_scaled$xsd),
+              clust_obj = X_clust_obj,
+              nb_hidden = nb_hidden,
+              nn_xm = list_xreg$nn_xm,
+              nn_scales = list_xreg$nn_scales,
+              nodes_sim = nodes_sim,
+              activ = activ,
+              fitted_values = drop(ym +  centered_y_hat),
+              GCV = GCV,
+              compute_Sigma = compute_Sigma,
+              x = x,
+              y = y
+            ),
+            class = "rvfl"
           )
         )
       }
@@ -192,53 +195,59 @@ fit_rvfl <- function(x,
         names(Sigma) <- lambda
         
         return(
-          list(
-            coef = drop(coef),
-            scales = x_scaled$xsd,
-            Sigma = Sigma,
-            lambda = lambda,
-            ym = ym,
-            xm = x_scaled$xm,
-            n_clusters = n_clusters,
-            clusters_scales = list(means = init_x_scaled$xm,
-                                   sds = init_x_scaled$xsd),
-            clust_obj = X_clust_obj,
-            nb_hidden = nb_hidden,
-            nn_xm = list_xreg$nn_xm,
-            nn_scales = list_xreg$nn_scales,
-            nodes_sim = nodes_sim,
-            activ = activ,
-            fitted_values = fitted_values,
-            GCV = GCV,
-            compute_Sigma = compute_Sigma,
-            x = x,
-            y = y
+          structure(
+            list(
+              coef = drop(coef),
+              scales = x_scaled$xsd,
+              Sigma = Sigma,
+              lambda = lambda,
+              ym = ym,
+              xm = x_scaled$xm,
+              n_clusters = n_clusters,
+              clusters_scales = list(means = init_x_scaled$xm,
+                                     sds = init_x_scaled$xsd),
+              clust_obj = X_clust_obj,
+              nb_hidden = nb_hidden,
+              nn_xm = list_xreg$nn_xm,
+              nn_scales = list_xreg$nn_scales,
+              nodes_sim = nodes_sim,
+              activ = activ,
+              fitted_values = fitted_values,
+              GCV = GCV,
+              compute_Sigma = compute_Sigma,
+              x = x,
+              y = y
+            ),
+            class = "rvfl"
           )
         )
       } else {
         #else: compute_Sigma == FALSE && length(lambda) == 1
         
         return(
-          list(
-            coef = drop(coef),
-            scales = x_scaled$xsd,
-            lambda = lambda,
-            ym = ym,
-            xm = x_scaled$xm,
-            n_clusters = n_clusters,
-            clusters_scales = list(means = init_x_scaled$xm,
-                                   sds = init_x_scaled$xsd),
-            clust_obj = X_clust_obj,
-            nb_hidden = nb_hidden,
-            nn_xm = list_xreg$nn_xm,
-            nn_scales = list_xreg$nn_scales,
-            nodes_sim = nodes_sim,
-            activ = activ,
-            fitted_values = drop(ym +  centered_y_hat),
-            GCV = GCV,
-            compute_Sigma = compute_Sigma,
-            x = x,
-            y = y
+          structure(
+            list(
+              coef = drop(coef),
+              scales = x_scaled$xsd,
+              lambda = lambda,
+              ym = ym,
+              xm = x_scaled$xm,
+              n_clusters = n_clusters,
+              clusters_scales = list(means = init_x_scaled$xm,
+                                     sds = init_x_scaled$xsd),
+              clust_obj = X_clust_obj,
+              nb_hidden = nb_hidden,
+              nn_xm = list_xreg$nn_xm,
+              nn_scales = list_xreg$nn_scales,
+              nodes_sim = nodes_sim,
+              activ = activ,
+              fitted_values = drop(ym +  centered_y_hat),
+              GCV = GCV,
+              compute_Sigma = compute_Sigma,
+              x = x,
+              y = y
+            ),
+            class = "rvfl"
           )
         )
       }
@@ -296,29 +305,32 @@ fit_rvfl <- function(x,
     }
 
       return(
-        list(
-          coef = coef,
-          Dn = Dn,
-          Sigma = Sigma,
-          scales = x_scaled$xsd,
-          lambda = lambda,
-          ym = ym,
-          xm = x_scaled$xm,
-          n_clusters = n_clusters,
-          clusters_scales = list(means = init_x_scaled$xm,
-                                 sds = init_x_scaled$xsd),
-          clust_obj = X_clust_obj,
-          nb_hidden = nb_hidden,
-          nodes_sim = nodes_sim,
-          activ = activ,
-          nn_xm = list_xreg$nn_xm,
-          nn_scales = list_xreg$nn_scales,
-          fitted_values = drop(ym + X %*% coef),
-          compute_Sigma = compute_Sigma,
-          x = x,
-          y = y,
-          n_updates = 0,
-          avg_coefs = coef
+        structure(
+          list(
+            coef = coef,
+            Dn = Dn,
+            Sigma = Sigma,
+            scales = x_scaled$xsd,
+            lambda = lambda,
+            ym = ym,
+            xm = x_scaled$xm,
+            n_clusters = n_clusters,
+            clusters_scales = list(means = init_x_scaled$xm,
+                                   sds = init_x_scaled$xsd),
+            clust_obj = X_clust_obj,
+            nb_hidden = nb_hidden,
+            nodes_sim = nodes_sim,
+            activ = activ,
+            nn_xm = list_xreg$nn_xm,
+            nn_scales = list_xreg$nn_scales,
+            fitted_values = drop(ym + X %*% coef),
+            compute_Sigma = compute_Sigma,
+            x = x,
+            y = y,
+            n_updates = 0,
+            avg_coefs = coef
+          ),
+          class = "rvfl"
         )
       )
     }    
@@ -402,8 +414,13 @@ fit_rvfl <- function(x,
       #close(pb)
     }
     
-    return(list(obj = res,
-                compute_Sigma = compute_Sigma))
+    return(
+      structure(
+        list(obj = res,
+             compute_Sigma = compute_Sigma),
+        class = "rvfl_mcmc"
+      )
+    )
   }
   
   
@@ -446,21 +463,24 @@ fit_rvfl <- function(x,
     resid <- y - fitted_values
     
     return(
-      list(
-        y = y,
-        sigma = sigma,
-        l = l,
-        K = K,
-        lambda_krls = lambda_krls,
-        inv_method = inv_method,
-        mat_coefs = mat_coefs,
-        fitted_values = fitted_values,
-        ym = ym,
-        xm = xm,
-        xsd = xsd,
-        scaled_x = X,
-        resid = resid,
-        compute_Sigma = compute_Sigma
+      structure(
+        list(
+          y = y,
+          sigma = sigma,
+          l = l,
+          K = K,
+          lambda_krls = lambda_krls,
+          inv_method = inv_method,
+          mat_coefs = mat_coefs,
+          fitted_values = fitted_values,
+          ym = ym,
+          xm = xm,
+          xsd = xsd,
+          scaled_x = X,
+          resid = resid,
+          compute_Sigma = compute_Sigma
+        ),
+        class = "matern52"
       )
     )
     
@@ -508,20 +528,23 @@ fit_rvfl <- function(x,
       fitted_values <- predict(fit_obj, newx = X)
       
       return(
-        list(
-          fit_obj = fit_obj,
-          scales = x_scaled$xsd,
-          ym = ym,
-          xm = x_scaled$xm,
-          nb_hidden = nb_hidden,
-          nn_xm = list_xreg$nn_xm,
-          nn_scales = list_xreg$nn_scales,
-          nodes_sim = nodes_sim,
-          activ = activ,
-          y = y,
-          fitted_values = fitted_values,
-          resid = y - fitted_values,
-          compute_Sigma = compute_Sigma
+        structure(
+          list(
+            fit_obj = fit_obj,
+            scales = x_scaled$xsd,
+            ym = ym,
+            xm = x_scaled$xm,
+            nb_hidden = nb_hidden,
+            nn_xm = list_xreg$nn_xm,
+            nn_scales = list_xreg$nn_scales,
+            nodes_sim = nodes_sim,
+            activ = activ,
+            y = y,
+            fitted_values = fitted_values,
+            resid = y - fitted_values,
+            compute_Sigma = compute_Sigma
+          ),
+          class = "glmnet_rvfl"
         )
       )
     } else {
@@ -542,22 +565,24 @@ fit_rvfl <- function(x,
         }
       
       return(
-        list(
-          fit_obj_list = fit_obj_list,
-          scales = lapply(1:length(fit_obj_list), function(i)
-            x_scaled_list[[i]]$xsd),
-          xm = lapply(1:length(fit_obj_list), function(i)
-            x_scaled_list[[i]]$xm),
-          nb_hidden = nb_hidden,
-          nn_xm = lapply(1:length(fit_obj_list), function(i)
-            xreg_list[[i]]$nn_xm),
-          nn_scales = lapply(1:length(fit_obj_list), function(i)
-            xreg_list[[i]]$nn_scales),
-          nodes_sim = nodes_sim,
-          activ = activ,
-          y = y,
-          compute_Sigma = compute_Sigma
-          #resid = y - fitted_values
+        structure(
+          list(
+            fit_obj_list = fit_obj_list,
+            scales = lapply(1:length(fit_obj_list), function(i)
+              x_scaled_list[[i]]$xsd),
+            xm = lapply(1:length(fit_obj_list), function(i)
+              x_scaled_list[[i]]$xm),
+            nb_hidden = nb_hidden,
+            nn_xm = lapply(1:length(fit_obj_list), function(i)
+              xreg_list[[i]]$nn_xm),
+            nn_scales = lapply(1:length(fit_obj_list), function(i)
+              xreg_list[[i]]$nn_scales),
+            nodes_sim = nodes_sim,
+            activ = activ,
+            y = y,
+            compute_Sigma = compute_Sigma
+          ),
+          class = "glmnet_rvfl"
         )
       )
     }

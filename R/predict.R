@@ -311,3 +311,59 @@ predict_glmnet <- function(fit_obj, newx, s = 0.1)
   }
 
 }
+
+#' Predict Method for RVFL Models
+#'
+#' @param object Fitted model object
+#' @param newdata New data for prediction
+#' @param ci Confidence interval (optional)
+#' @param graph Whether to create a graph (optional)
+#' @param ... Additional arguments
+#'
+#' @return Predictions for new data
+#' @export
+predict.rvfl <- function(object, newdata, ci = NULL, graph = FALSE, ...) {
+    predict_rvfl(fit_obj = object, newx = newdata, ci = ci, graph = graph)
+}
+
+#' Predict Method for RVFL MCMC Models
+#'
+#' @param object Fitted model object
+#' @param newdata New data for prediction
+#' @param ci Confidence interval (optional)
+#' @param graph Whether to create a graph (optional)
+#' @param ... Additional arguments
+#'
+#' @return Predictions for new data
+#' @export
+predict.rvfl_mcmc <- function(object, newdata, ci = NULL, graph = FALSE, ...) {
+    predict_rvfl_mcmc(fit_obj = object, newx = newdata, ci = ci, graph = graph)
+}
+
+#' Predict Method for Matérn 5/2 Models
+#'
+#' @param object Fitted model object
+#' @param newdata New data for prediction
+#' @param ci Confidence interval (optional)
+#' @param ... Additional arguments
+#'
+#' @return Predictions for new data
+#' @export
+predict.matern52 <- function(object, newdata, ci = NULL, ...) {
+    predict_matern52(fit_obj = object, newx = newdata, ci = ci)
+}
+
+#' Predict Method for Elastic Net Models
+#'
+#' @param object Fitted model object
+#' @param newdata New data for prediction
+#' @param s Value of the penalty parameter lambda at which predictions are required
+#' @param ... Additional arguments
+#'
+#' @return Predictions for new data
+#' @export
+predict.glmnet_rvfl <- function(object, newdata, s = 0.1, ...) {
+    predict_glmnet(fit_obj = object, newx = newdata, s = s)
+}
+
+# ... existing code remains unchanged ...
