@@ -1,26 +1,26 @@
 # abs(1-x(i)/x(i-1)) < relTol (1e-10) ||  abs(x(i)-x(i-1)) < absTol (1e-20)
 # Bayesian optimization
 
-#' Title
+#' Bayesian optimization using surrogate models
 #'
-#' @param objective
-#' @param lower
-#' @param upper
-#' @param type_acq
-#' @param nb_init
-#' @param nb_iter
-#' @param kappa
-#' @param method
-#' @param surrogate_model
-#' @param optim_surr
-#' @param activation_function
-#' @param type_optim
-#' @param early_stopping
-#' @param abs_tol
-#' @param rel_tol
-#' @param seed
-#' @param verbose
-#' @param show_progress
+#' @param objective function to be optimized
+#' @param lower lower bound for search
+#' @param upper upper bound for search
+#' @param type_acq type of acquisition function
+#' @param nb_init number of points in initial design
+#' @param nb_iter number of iterations of the algo
+#' @param kappa quantile for ucb
+#' @param method fit all, or online
+#' @param surrogate_model surrogate model
+#' @param optim_surr surrogate hyperparams fitting
+#' @param activation_function activation for bayesian rvfl
+#' @param type_optim optim for acquisition (nlminb, DEoptim, msnlminb, randsearch, none)
+#' @param early_stopping if TRUE, the algorithm will stop if the acquisition function is below a certain threshold
+#' @param abs_tol absolute tolerance for early stopping
+#' @param rel_tol relative tolerance for early stopping
+#' @param seed seed for random number generation
+#' @param verbose if TRUE, the algorithm will print progress messages
+#' @param show_progress if TRUE, the algorithm will show a progress bar
 #' @param ...
 #'
 #' @return
@@ -31,8 +31,8 @@ bayes_opt <- function(objective, # objective function
                       lower, # lower bound for search
                       upper, # upper bound for search
                       type_acq = c("ei", "ucb"), # type of acquisition function
-                      nb_init = 10, # number of points in initial design
-                      nb_iter = 25, # number of iterations of the algo
+                      nb_init = 10L, # number of points in initial design
+                      nb_iter = 90L, # number of iterations of the algo
                       kappa = 1.96, # quantile for ucb
                       method = c("standard", "direct_online", "polyak_online"), # fit all, or online # '*_online' available for rvfl only
                       surrogate_model = c("rvfl", "matern52", "rvfl_emcee", "rf"), # surrogate model

@@ -2,15 +2,15 @@
 % Please edit documentation in R/bayesopt.R
 \name{bayes_opt}
 \alias{bayes_opt}
-\title{Title}
+\title{Bayesian optimization using surrogate models}
 \usage{
 bayes_opt(
   objective,
   lower,
   upper,
   type_acq = c("ei", "ucb"),
-  nb_init = 10,
-  nb_iter = 25,
+  nb_init = 10L,
+  nb_iter = 90L,
   kappa = 1.96,
   method = c("standard", "direct_online", "polyak_online"),
   surrogate_model = c("rvfl", "matern52", "rvfl_emcee", "rf"),
@@ -27,8 +27,44 @@ bayes_opt(
 )
 }
 \arguments{
+\item{objective}{function to be optimized}
+
+\item{lower}{lower bound for search}
+
+\item{upper}{upper bound for search}
+
+\item{type_acq}{type of acquisition function}
+
+\item{nb_init}{number of points in initial design}
+
+\item{nb_iter}{number of iterations of the algo}
+
+\item{kappa}{quantile for ucb}
+
+\item{method}{fit all, or online}
+
+\item{surrogate_model}{surrogate model}
+
+\item{optim_surr}{surrogate hyperparams fitting}
+
+\item{activation_function}{activation for bayesian rvfl}
+
+\item{type_optim}{optim for acquisition (nlminb, DEoptim, msnlminb, randsearch, none)}
+
+\item{early_stopping}{if TRUE, the algorithm will stop if the acquisition function is below a certain threshold}
+
+\item{abs_tol}{absolute tolerance for early stopping}
+
+\item{rel_tol}{relative tolerance for early stopping}
+
+\item{seed}{seed for random number generation}
+
+\item{verbose}{if TRUE, the algorithm will print progress messages}
+
+\item{show_progress}{if TRUE, the algorithm will show a progress bar}
+
 \item{...}{}
 }
 \description{
-Title
+Bayesian optimization using surrogate models
 }
