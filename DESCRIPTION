@@ -13,3 +13,5 @@ LinkingTo: Rcpp
 Imports: Rcpp, randtoolbox, foreach, memoise
 Depends: cclust, memoise, mlbench, caret   
 RoxygenNote: 7.3.2
+Suggests: misc
+Remotes: thierrymoudiki/misc
